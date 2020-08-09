@@ -1,0 +1,78 @@
+.vflow-container {
+  position: relative;
+  width: calc(100vw);
+  height: calc(100vw);
+  /* 方格大小*/
+  background-size: 15px 15px;
+  /* 方格 */
+  background-image: linear-gradient(to right, #f1f1f1 1px, transparent 1px),
+    linear-gradient(to bottom, #f1f1f1 1px, transparent 1px);
+}
+.flow-canvas:hover {
+  cursor: move;
+}
+
+.node {
+  width: auto;
+  height: auto;
+  /* 允许重叠的盒子 */
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  border-radius: 4px;
+  border: 1px solid rgb(168, 211, 236);
+  z-index: 2;
+  padding: 0px;
+}
+
+.flow-canvas .node .outputs,
+.flow-canvas .node .inputs {
+  position: absolute;
+}
+.flow-canvas .node .outputs {
+  right: 0;
+  bottom: 10%;
+}
+.flow-canvas .node .inputs {
+  left: 0;
+  top: 10%;
+}
+
+.flow-canvas .node .input_style,
+.flow-canvas .node .output_style {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  z-index: 1;
+  background-color: rgb(135, 222, 186);
+  margin-top: 5px;
+}
+
+.flow-canvas .node .input_style {
+  transform: translate3d(-50%, 50%, 0);
+}
+.flow-canvas .node .output_style {
+  transform: translate3d(50%, 50%, 0);
+}
+
+.flow-canvas .content {
+  /* margin: auto; */
+  padding: 0px;
+}
+
+.flow-canvas .connection {
+  position: absolute;
+  transform: translate(-9999px, -9999px);
+}
+.flow-canvas .connection .path {
+  transform: translate(9999px, 9999px);
+  fill: none;
+  stroke-width: 2px;
+  stroke: steelblue;
+}
+
+.flow-canvas svg {
+  z-index: 1;
+  position: absolute;
+  overflow: visible !important;
+}
