@@ -149,11 +149,11 @@ export class Node<T> {
    */
   public tmepSVG: SVGPathElement | null = null
   public tempOutID: number | null = null
-  public zoom = 1
-  public canvasNowTranslate = { x: 0, y: 0 }
-  constructor(parentNode: HTMLElement, options: NodeOptions<T>) {
+  public zoom: number
+  constructor(parentNode: HTMLElement, options: NodeOptions<T>, zoom: number) {
     this.parentNode = parentNode
     this.ID = options.id!
+    this.zoom = zoom
     const element = document.createElement('div')
     element.setAttribute('id', `${NodeConst.node}-${options.id!}`)
     element.classList.add(NodeConst.node)
@@ -199,23 +199,19 @@ export class Node<T> {
 
   getOutputPostion(id: number) {
     const domRect = this.getOutputEle(id).getBoundingClientRect()
-    console.info('domRect.x', domRect.x)
     const canvasDomRect = this.parentNode.getBoundingClientRect()
-    console.info('canvasDomRect.x', canvasDomRect.x)
-    console.info('this.canvasNowTranslate.x', this.canvasNowTranslate.x)
     const c = {
-      x: toInt(domRect.x + domRect.width / 2 - canvasDomRect.x),
-      y: toInt(domRect.y + domRect.height / 2 - canvasDomRect.y)
+      x: toInt(domRect.x + domRect.width / 2 - canvasDomRect.x) / this.zoom,
+      y: toInt(domRect.y + domRect.height / 2 - canvasDomRect.y) / this.zoom
     } as IPostion
-    console.info('node:210', c)
     return c
   }
   getInputPostion(id: number) {
     const domRect = this.getInputEle(id).getBoundingClientRect()
     const canvasDomRect = this.parentNode.getBoundingClientRect()
     return {
-      x: toInt(domRect.x + domRect.width / 2 - canvasDomRect.x * this.zoom),
-      y: toInt(domRect.y + domRect.height / 2 - canvasDomRect.y * this.zoom)
+      x: toInt(domRect.x + domRect.width / 2 - canvasDomRect.x) / this.zoom,
+      y: toInt(domRect.y + domRect.height / 2 - canvasDomRect.y) / this.zoom
     } as IPostion
   }
   private getInputEle(id: number) {
@@ -299,7 +295,6 @@ export class Node<T> {
 
   getOutConnectPath(outID: number, inNode: Node<T>, inID: number) {
     const outPostion = this.getOutputPostion(outID)
-    console.info('node:302', outPostion)
     const inPostion = inNode.getInputPostion(inID)
     return this.getPath(inPostion, outPostion)
   }
@@ -335,7 +330,6 @@ export class Node<T> {
   }
 
   setContent(innerHTML: string | Element) {
-    console.info('node:311', innerHTML)
     if (typeof innerHTML === 'string') {
       this.contentEle.innerHTML = innerHTML
     } else {
@@ -367,11 +361,9 @@ export class Node<T> {
     const outPostion = this.getOutputPostion(outID)
     this.tmepSVG.setAttributeNS(null, 'd', this.getPath(postion, outPostion))
     this.tempOutID = outID
-    console.info('node:362', 'drawTempConnect')
   }
 
   clearTempConnection() {
-    console.info('node:365', this.tmepSVG, this.tempOutID)
     this.tmepSVG?.parentElement?.remove()
     this.tmepSVG = null
     this.tempOutID = null

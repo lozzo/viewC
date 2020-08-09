@@ -63,8 +63,8 @@ export interface FlowNode<T> {
 
 export class FlowNode<T> extends EventEmitter {
   private zoom: number = 1
-  public zoomMax = 1.1
-  public zoomMin = 0.9
+  public zoomMax = 1.6
+  public zoomMin = 0.4
   private container: HTMLElement
   private canvasContainer: HTMLElement
   private nodeID: number = 0
@@ -110,7 +110,7 @@ export class FlowNode<T> extends EventEmitter {
   addNode(options: NodeOptions<T>) {
     this.nodeID = options.id ? options.id : this.nodeID
     options.id = this.nodeID
-    const node = new Node<T>(this.canvasContainer, options)
+    const node = new Node<T>(this.canvasContainer, options, this.zoom)
     this.nodes.set(this.nodeID, node)
     this.nodeID += 1
     this.emit('nodeAdd', node)
@@ -144,7 +144,6 @@ export class FlowNode<T> extends EventEmitter {
    * @param event 鼠标事件
    */
   private click(event: MouseEvent) {
-    console.info('vflow:125', event.x, event.y)
     this.clickPostion = {
       x: event.x,
       y: event.y
@@ -152,14 +151,11 @@ export class FlowNode<T> extends EventEmitter {
     let ele = event.target as HTMLElement
     const contentSelector = '.' + NodeConst.content
     if (ele.closest(contentSelector) !== null) {
-      console.info('vflow:149', '选中content内部物种')
       ele = ele.closest(contentSelector)! as HTMLElement
     }
     const cssName = ele.classList ? ele.classList[0] : ''
-    console.info('vflow:128', cssName)
     switch (cssName) {
       case FlowConst.SelectedFlag:
-        console.info('vflow:128', '再次被选中')
         break
       case FlowConst.CssCanvas:
         this.selectedType = FlowConst.CssCanvas
@@ -186,27 +182,22 @@ export class FlowNode<T> extends EventEmitter {
         this.calcBL(event)
         break
       case NodeConst.inputCssname:
-        console.info('vflow:128', '具体的输入框被选中')
         this.selectedEle = ele
         this.selectedType = NodeConst.inputCssname
         break
       case NodeConst.outputCssname:
-        console.info('vflow:132', '具体的输出框被选定')
         this.selectedType = NodeConst.outputCssname
         this.selectedEle = event.target as HTMLElement
         break
       case NodeConst.inputs || NodeConst.outputs:
-        console.info('vflow:135', '当输入或者输出的框被选中时')
         this.selectedEle = ele.parentElement
         this.selectedType = NodeConst.node
         break
       case NodeConst.connectionCssName || NodeConst.pathCssName:
-        console.info('vflow:137', '连接被选中')
         this.selectedType = NodeConst.connectionCssName
         this.selectedEle = cssName === NodeConst.connectionCssName ? ele : ele.parentElement
         break
       default:
-        console.info('vflow:146', ele)
         break
     }
   }
@@ -230,6 +221,8 @@ export class FlowNode<T> extends EventEmitter {
     const nodeID = parseInt(this.selectedEle?.id.split('-')[1]!)
     const node = this.nodes.get(nodeID)!
     const postion = this.getRelativePostionInNode(event)
+    console.info('dlog-vflow:224', { x: event.x, y: event.y })
+    console.info('dlog-vflow:225', postion)
     node.setPostion(postion)
 
     const inNodes = node.inNodes
@@ -266,19 +259,19 @@ export class FlowNode<T> extends EventEmitter {
     const canvasDomRect = this.canvasContainer.getBoundingClientRect()
     const elePosX = this.selectedEle!.offsetLeft
     const elePosY = this.selectedEle!.offsetTop
-    const blX = event.x - canvasDomRect.x - elePosX
-    const blY = event.y - canvasDomRect.y - elePosY
+    const blX = (event.x - canvasDomRect.x) / this.zoom - elePosX
+    const blY = (event.y - canvasDomRect.y) / this.zoom - elePosY
     this.clickPostion = { x: blX, y: blY }
   }
   /**
-   * 鼠标在canvasContainer内的相对位置
+   * 鼠标在Node内的相对位置
    * @param event 鼠标事件
    */
   private getRelativePostionInNode(event: MouseEvent): IPostion {
     const canvasDomRect = this.canvasContainer.getBoundingClientRect()
     return {
-      x: toInt(event.x - canvasDomRect.x - this.clickPostion?.x!),
-      y: toInt(event.y - canvasDomRect.y - this.clickPostion?.y!)
+      x: toInt((event.x - canvasDomRect.x) / this.zoom - this.clickPostion?.x!),
+      y: toInt((event.y - canvasDomRect.y) / this.zoom - this.clickPostion?.y!)
     }
   }
 
@@ -288,11 +281,10 @@ export class FlowNode<T> extends EventEmitter {
    */
   private getRelativePostionInCanvas(event: MouseEvent): IPostion {
     const canvasDomRect = this.canvasContainer.getBoundingClientRect()
-    return { x: toInt(event.x - canvasDomRect.x), y: toInt(event.y - canvasDomRect.y) }
+    return { x: toInt((event.x - canvasDomRect.x) / this.zoom), y: toInt((event.y - canvasDomRect.y) / this.zoom) }
   }
 
   private mouseUP(event: MouseEvent) {
-    console.info('vflow:290', this.drawConnectionNodeID)
     if (this.drawConnectionNodeID !== null) {
       this.overDrawConnect(event)
     }
@@ -323,11 +315,9 @@ export class FlowNode<T> extends EventEmitter {
     const ele = event.target as HTMLElement
     const outNode = this.nodes.get(this.drawConnectionNodeID!)!
     if (NodeConst.inputCssname !== ele.classList[0]) {
-      console.info('vflow:320', outNode)
       outNode.clearTempConnection()
       return
     }
-    console.info('vflow:324', ele)
     const inNode = this.nodes.get(toInt(ele.closest('.' + NodeConst.node)?.id.split('-')[1]))!
     const inID = toInt(ele.classList[1].split('-')[1])
     outNode.connectToNode(outNode.tempOutID!, inNode, inID)
@@ -338,7 +328,6 @@ export class FlowNode<T> extends EventEmitter {
       'translate(' + this.canvasNowTranslate.x + 'px, ' + this.canvasNowTranslate.y + 'px) scale(' + this.zoom + ')'
     this.nodes.forEach((node) => {
       node.zoom = this.zoom
-      node.canvasNowTranslate = this.canvasNowTranslate
     })
   }
   private zoomIn() {
