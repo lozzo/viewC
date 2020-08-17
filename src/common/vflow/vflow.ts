@@ -4,6 +4,7 @@ import { Node, IPostion, NodeOptions, NodeConst, ToNode } from './node'
 const toInt = (x: any) => {
   return parseInt(x.toString())
 }
+
 /**
  * <div id="vlfow">
         <div class="inputs">
@@ -51,6 +52,7 @@ export interface VFlow<T> {
   on<K extends keyof FlowEvent<T>>(type: K, listener: (this: VFlow<T>, ev: FlowEvent<T>[K]) => any): this
   // 开发时好用，自动提示
   emit<K extends keyof FlowEvent<T>>(type: K, ev: FlowEvent<T>[K]): boolean
+
   /**
    * 连接两个节点
    * @param outNode 从这个节点输出
@@ -69,6 +71,7 @@ export class VFlow<T> extends EventEmitter {
   private canvasContainer: HTMLElement
   private nodeID: number = 0
   private nodes: Map<number, Node<T>> = new Map()
+
   /**
    * 当点击时，被选中的对象
    */
@@ -80,11 +83,13 @@ export class VFlow<T> extends EventEmitter {
     | NodeConst.inputCssname
     | NodeConst.outputCssname
     | NodeConst.connectionCssName
+
   /**
    * 当鼠标点击的时候，的位置，这个位置记录是为了在拖拽的
    * 时候不让被拖拽的ele的(0,0)位置瞬移到鼠标上
    */
   private clickPostion?: IPostion
+
   /**
    * 当移动画板时，记录鼠标点击时的初始位置，计算移动多少
    */
