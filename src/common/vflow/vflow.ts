@@ -45,10 +45,10 @@ interface FlowEvent<T> {
   }
 }
 
-export interface FlowNode<T> {
+export interface VFlow<T> {
   addNode(options: NodeOptions<T>): Node<T>
   deleteNode(id: number): void
-  on<K extends keyof FlowEvent<T>>(type: K, listener: (this: FlowNode<T>, ev: FlowEvent<T>[K]) => any): this
+  on<K extends keyof FlowEvent<T>>(type: K, listener: (this: VFlow<T>, ev: FlowEvent<T>[K]) => any): this
   // 开发时好用，自动提示
   emit<K extends keyof FlowEvent<T>>(type: K, ev: FlowEvent<T>[K]): boolean
   /**
@@ -61,7 +61,7 @@ export interface FlowNode<T> {
   connectNodes(outNode: Node<T>, outID: number, inNode: Node<T>, inID: number): void
 }
 
-export class FlowNode<T> extends EventEmitter {
+export class VFlow<T> extends EventEmitter {
   private zoom: number = 1
   public zoomMax = 1.6
   public zoomMin = 0.4
@@ -109,6 +109,7 @@ export class FlowNode<T> extends EventEmitter {
 
     this.container.addEventListener('keydown', this.keyEventHandle.bind(this))
   }
+
   addNode(options: NodeOptions<T>) {
     this.nodeID = options.id ? options.id : this.nodeID
     options.id = this.nodeID
@@ -118,12 +119,14 @@ export class FlowNode<T> extends EventEmitter {
     this.emit('nodeAdd', node)
     return node
   }
+
   deleteNode(id: number) {
     const node = this.nodes.get(id)
     node?.delete()
     if (node) this.emit('nodeDelete', node)
     this.nodes.delete(id)
   }
+
   connectNodes(outNode: Node<T>, outID: number, inNode: Node<T>, inID: number) {
     const svgNodeClass = this.getConnectNodeCss(outNode, inNode)
     const eleC = this.canvasContainer.getElementsByClassName(svgNodeClass)
@@ -137,6 +140,7 @@ export class FlowNode<T> extends EventEmitter {
     })
     outNode.connectToNode(outID, inNode, inID)
   }
+
   private getConnectNodeCss(outNode: Node<T>, inNode: Node<T>) {
     return `${NodeConst.connectionCssName} ${outNode.getOutConnectionCssName()} ${inNode.getInConnectionCssName()}`
   }
@@ -224,6 +228,7 @@ export class FlowNode<T> extends EventEmitter {
         break
     }
   }
+
   private nodeMove(event: MouseEvent) {
     const nodeID = parseInt(this.selectedEle?.id.split('-')[1]!)
     const node = this.nodes.get(nodeID)!
@@ -246,6 +251,7 @@ export class FlowNode<T> extends EventEmitter {
       }
     }
   }
+
   /**
    * 移动画板
    * @param event
@@ -257,6 +263,7 @@ export class FlowNode<T> extends EventEmitter {
     this.canvasNowTranslate = { x, y }
     this.canvasContainer.style.transform = 'translate(' + x + 'px, ' + y + 'px) scale(' + this.zoom + ')'
   }
+
   /**
    * 计算点击时，鼠标在被选择的ele内部的相对位置
    */
@@ -268,6 +275,7 @@ export class FlowNode<T> extends EventEmitter {
     const blY = (event.y - canvasDomRect.y) / this.zoom - elePosY
     this.clickPostion = { x: blX, y: blY }
   }
+
   /**
    * 鼠标在Node内的相对位置
    * @param event 鼠标事件
@@ -300,6 +308,7 @@ export class FlowNode<T> extends EventEmitter {
     this.drawConnectionNodeID = undefined
     this.container.classList.remove(FlowConst.SelectedFlag)
   }
+
   /**
    * 动态的画连接线
    * @param event
@@ -313,6 +322,7 @@ export class FlowNode<T> extends EventEmitter {
     const node = this.nodes.get(nodeID)!
     node.drawTempConnect(this.getRelativePostionInCanvas(event), outID)
   }
+
   /**
    * 结束drawConnect
    * @param event
@@ -329,6 +339,7 @@ export class FlowNode<T> extends EventEmitter {
     outNode.connectToNode(outNode.tempOutID!, inNode, inID)
     outNode.clearTempConnection()
   }
+
   /**
    * 删除selected这个css标志，而不是删除selected的ele对象
    */
@@ -338,6 +349,7 @@ export class FlowNode<T> extends EventEmitter {
       ele.classList.remove(FlowConst.SelectedFlag)
     }
   }
+
   private zoomRefresh() {
     this.canvasContainer.style.transform =
       'translate(' + this.canvasNowTranslate.x + 'px, ' + this.canvasNowTranslate.y + 'px) scale(' + this.zoom + ')'
@@ -345,6 +357,7 @@ export class FlowNode<T> extends EventEmitter {
       node.zoom = this.zoom
     })
   }
+
   private zoomIn() {
     if (this.zoom < this.zoomMax) {
       this.zoom += 0.01
@@ -358,10 +371,12 @@ export class FlowNode<T> extends EventEmitter {
       this.zoomRefresh()
     }
   }
+
   private zoomReset() {
     this.zoom = 1
     this.zoomRefresh()
   }
+
   private zoomEnter(event: WheelEvent) {
     if (event.ctrlKey) {
       event.preventDefault()
@@ -372,6 +387,7 @@ export class FlowNode<T> extends EventEmitter {
       }
     }
   }
+
   private keyEventHandle(event: KeyboardEvent) {
     // console.info('dlog-vflow:377', event)
     if (event.key === 'Delete' || (event.key === 'Backspace' && event.metaKey)) {

@@ -21,7 +21,11 @@ module.exports = {
       "error",
       "interface"
     ],
-    "prefer-const": 2
+    "prefer-const": 2,
+    // 要求在注释周围有空行 (要求在块级注释之前有一空行)
+    "lines-around-comment": [1, {
+      "beforeBlockComment": true
+    }],
   },
   plugins: [
     "prettier"

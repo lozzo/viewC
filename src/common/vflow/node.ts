@@ -24,6 +24,7 @@ export enum NodeConst {
   content = 'content',
   input = 'input',
   output = 'output',
+
   /**
    * 当本节点作为输出时的连接的svg对象的css名称
    */
@@ -33,14 +34,17 @@ export enum NodeConst {
   TinCss = 'in-',
   inputCssname = 'input_point',
   outputCssname = 'output_point',
+
   /**
    * path 的cssname
    */
   pathCssName = 'path',
+
   /**
    * svg 的cssname
    */
   connectionCssName = 'connection',
+
   /**
    * 临时连接
    */
@@ -51,6 +55,7 @@ export interface IPostion {
   x: number
   y: number
 }
+
 /**
  * 添加节点时的选项
  * @param id 添加节点的ID，如果设置则当前Flow的全局id以此为自增
@@ -77,40 +82,48 @@ export interface ToNode {
 
 export interface Node<T> {
   data: T
+
   /**
    *设置节点内容
    * @param innerHTML 内部的content
    */
   setContent(innerHTML: string): void
+
   /**
    *添加一个输出选项
    * @param id 这儿设置id是为了在导入数据时可能存在被删除的id
    */
   addOutPut(id?: number): void
+
   /**
    *添加一个输入选项
    * @param id 这儿设置id是为了在导入数据时可能存在被删除的id
    */
   addInPut(id?: number): void
+
   /**
    *获取一个输出框的位置
    * @param id 输出点的id
    */
   getOutputPostion(id: number): IPostion
+
   /**
    *获取一个输入框的位置
    * @param id 输出点的id
    */
   getInputPostion(id: number): IPostion
+
   /**
    *删除节点,同时删除和他连接的对象的连接都删除
    */
   delete(): void
+
   /**
    *获取作为输出的时候的设置的svg的css名称
    */
   getOutConnectionCssName(): string
   getInConnectionCssName(): string
+
   /**
    * 连接到某一节点上
    * @param outID 从此节点输出
@@ -118,6 +131,7 @@ export interface Node<T> {
    * @param inID 到这个输入点
    */
   connectToNode(outID: number, inNode: Node<T>, inID: number): void
+
   /**
    * 更新输出的连接
    * @param outID 从此节点输出
@@ -125,6 +139,7 @@ export interface Node<T> {
    * @param inID 到这个输入点
    */
   updateOutConnect(outID: number, inNode: Node<T>, inID: number): void
+
   /**
    * 将节点移动到某个位置
    * @param pos 设置节点的位置left.top
@@ -148,6 +163,7 @@ export class Node<T> {
   public inNodes: ToNode[] = []
   public postion?: IPostion
   public data: T
+
   /**
    * 临时的svg对象，在鼠标拖动过程中绘制
    */
@@ -155,6 +171,7 @@ export class Node<T> {
   public tempOutID: number | null = null
   public zoom: number
   public contentHTML?: string
+
   constructor(parentNode: HTMLElement, options: NodeOptions<T>, zoom: number) {
     this.parentNode = parentNode
     this.ID = options.id!
@@ -194,6 +211,7 @@ export class Node<T> {
     this.outputEle.appendChild(outPutEle)
     this.outputIDs.push(this.outputCount)
   }
+
   //TODO 还未完成
   /**
    * TODO 还未完成
@@ -249,6 +267,7 @@ export class Node<T> {
     this.element.remove()
     this.deleteNodeConnection()
   }
+
   /**
    *删除所有和本节点相关的连接
    * @param id 目标node的id
@@ -322,11 +341,13 @@ export class Node<T> {
   getCommonOutConnectCss() {
     return `${NodeConst.connectionCssName} ${this.getOutConnectionCssName()}`
   }
+
   getOutConnectCssName(outID: number, inNode: Node<T>, inID: number) {
     return `${this.getCommonOutConnectCss()} ${inNode.getInConnectionCssName()} ${NodeConst.TinCss}${inID} ${
       NodeConst.ToutCss
     }${outID}`
   }
+
   getInConnectCssName(inID: number, outNode: Node<T>, outID: number) {
     return `${NodeConst.connectionCssName} ${outNode.getOutConnectionCssName()} ${this.getInConnectionCssName()} ${
       NodeConst.TinCss
@@ -338,6 +359,7 @@ export class Node<T> {
     const inPostion = inNode.getInputPostion(inID)
     return this.getPath(inPostion, outPostion)
   }
+
   getInConnectPath(inID: number, outNode: Node<T>, outID: number) {
     const outPostion = outNode.getOutputPostion(outID)
     const inPostion = this.getInputPostion(inID)
@@ -351,6 +373,7 @@ export class Node<T> {
     const path = connectEle.children[0]
     path.setAttributeNS(null, 'd', this.getOutConnectPath(outID, inNode, inID))
   }
+
   updateInConnect(inID: number, outNode: Node<T>, outID: number) {
     const connectEle = this.parentNode.getElementsByClassName(
       this.getInConnectCssName(inID, outNode, outID)
@@ -358,6 +381,7 @@ export class Node<T> {
     const path = connectEle.children[0]
     path.setAttributeNS(null, 'd', this.getInConnectPath(inID, outNode, outID))
   }
+
   getPath(inPostion: IPostion, outPostion: IPostion) {
     // 这个是 控制点的倍率，以中心点区分，上下各拖动整体的多少
     const RATE = 0.7
@@ -372,6 +396,7 @@ export class Node<T> {
   setContent(html: string | Element) {
     typeof html === 'string' ? (this.contentEle.innerHTML = html) : this.contentEle.appendChild(html)
   }
+
   /**
    * 设置node的位置
    * @param pos
@@ -381,10 +406,12 @@ export class Node<T> {
     this.element.style.top = `${pos.y}px`
     this.postion = pos
   }
+
   getNodePostion(): IPostion {
     const domRect = this.element.getBoundingClientRect()
     return { x: toInt(domRect.x), y: toInt(domRect.y) }
   }
+
   /**
    * 绘制临时path
    * @param postion

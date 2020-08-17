@@ -12,7 +12,7 @@
 <script>
 // @ is an alias to /src
 import Vue from 'vue'
-import { FlowNode } from '../../common/vflow/vflow'
+import { VFlow } from '../../common/vflow/vflow'
 import styleDrawflow from '../../common/vflow/vflow.css'
 import startNode from '../components/flowNode/startNode.vue'
 
@@ -32,7 +32,7 @@ export default {
     const html = p.$el
     // console.info('node:322', wrapper.$el)
     const container = document.getElementById('tt')
-    const vflow = new FlowNode(container)
+    const vflow = new VFlow(container)
     const node1 = vflow.addNode({ HTML: html, postion: { x: 0, y: 0 }, data: {} })
     const node2 = vflow.addNode({
       HTML: html.cloneNode(true),
