@@ -31,8 +31,8 @@ export enum NodeConst {
   TinConnectCssName = 'in-node',
   ToutCss = 'out-',
   TinCss = 'in-',
-  inputCssname = 'input_style',
-  outputCssname = 'output_style',
+  inputCssname = 'input_point',
+  outputCssname = 'output_point',
   /**
    * path 的cssname
    */
@@ -69,7 +69,7 @@ export interface NodeOptions<T> {
   css?: string
 }
 
-interface ToNode {
+export interface ToNode {
   nodeID: number
   outputID: number
   inputID: number
@@ -140,9 +140,13 @@ export class Node<T> {
   private contentEle: HTMLDivElement
   private inputCount: number = 0
   private outputCount: number = 0
+  readonly ID: number
+
+  public outputIDs: number[] = []
+  public inputIDs: number[] = []
   public toNodes: ToNode[] = []
   public inNodes: ToNode[] = []
-  readonly ID: number
+  public postion?: IPostion
   public data: T
   /**
    * 临时的svg对象，在鼠标拖动过程中绘制
@@ -150,6 +154,7 @@ export class Node<T> {
   public tmepSVG: SVGPathElement | null = null
   public tempOutID: number | null = null
   public zoom: number
+  public contentHTML?: string
   constructor(parentNode: HTMLElement, options: NodeOptions<T>, zoom: number) {
     this.parentNode = parentNode
     this.ID = options.id!
@@ -187,6 +192,25 @@ export class Node<T> {
     outPutEle.setAttribute('class', NodeConst.outputCssname)
     outPutEle.classList.add(`${NodeConst.output}-${this.outputCount}`)
     this.outputEle.appendChild(outPutEle)
+    this.outputIDs.push(this.outputCount)
+  }
+  //TODO 还未完成
+  /**
+   * TODO 还未完成
+   * 删除输出点，顺便删除上面的连接
+   * @param id outID
+   */
+  deleteOutPut(id: number) {
+    const eleC = this.parentNode.getElementsByClassName(`${NodeConst.output}-${id}`)
+    Array.from(eleC).forEach((ele) => {
+      ele.remove()
+    })
+    for (let i = 0; i < this.toNodes.length; i++) {
+      const _tempInfo = this.toNodes[i]
+      if (_tempInfo.outputID === id) {
+        this.toNodes.splice(i, 1)
+      }
+    }
   }
 
   addInPut(id?: number) {
@@ -195,6 +219,7 @@ export class Node<T> {
     inPutEle.setAttribute('class', NodeConst.inputCssname)
     inPutEle.classList.add(`${NodeConst.input}-${this.inputCount}`)
     this.inputEle.appendChild(inPutEle)
+    this.inputIDs.push(this.inputCount)
   }
 
   getOutputPostion(id: number) {
@@ -230,13 +255,11 @@ export class Node<T> {
    */
   private deleteNodeConnection() {
     const outConnections = this.parentNode.getElementsByClassName(this.getOutConnectionCssName())
-    for (const ele of outConnections) {
-      ele.remove()
-    }
+    // for of 不能用于HTMLCollectionOf的遍历
+    // https://stackoverflow.com/questions/22754315/for-loop-for-htmlcollection-elements
+    Array.from(outConnections).forEach((ele) => ele.remove())
     const inConnections = this.parentNode.getElementsByClassName(this.getInConnectionCssName())
-    for (const ele of inConnections) {
-      ele.remove()
-    }
+    Array.from(inConnections).forEach((ele) => ele.remove())
   }
   getOutConnectionCssName() {
     return `${NodeConst.ToutConnectCssName}-${this.ID}`
@@ -269,6 +292,23 @@ export class Node<T> {
     })
   }
 
+  deleteConnectionToNode(outID: number, inNode: Node<T>, inID: number) {
+    const cssName = this.getOutConnectCssName(outID, inNode, inID)
+    this.parentNode.getElementsByClassName(cssName)[0].remove()
+    for (let i = 0; i < this.toNodes.length; i++) {
+      const _tempInfo = this.toNodes[i]
+      if (_tempInfo.outputID === outID && _tempInfo.nodeID === inNode.ID && _tempInfo.outputID === outID) {
+        this.toNodes.splice(i, 1)
+      }
+    }
+    for (let i = 0; i < inNode.inNodes.length; i++) {
+      const _tempInfo = inNode.inNodes[i]
+      if (_tempInfo.outputID === outID && _tempInfo.nodeID === this.ID && _tempInfo.outputID === outID) {
+        inNode.inNodes.splice(i, 1)
+      }
+    }
+  }
+
   private creatConnectionAndPath() {
     const connection = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
@@ -283,14 +323,14 @@ export class Node<T> {
     return `${NodeConst.connectionCssName} ${this.getOutConnectionCssName()}`
   }
   getOutConnectCssName(outID: number, inNode: Node<T>, inID: number) {
-    return `${this.getCommonOutConnectCss()} ${inNode.getInConnectionCssName()} ${NodeConst.TinCss}${outID} ${
+    return `${this.getCommonOutConnectCss()} ${inNode.getInConnectionCssName()} ${NodeConst.TinCss}${inID} ${
       NodeConst.ToutCss
-    }${inID}`
+    }${outID}`
   }
   getInConnectCssName(inID: number, outNode: Node<T>, outID: number) {
     return `${NodeConst.connectionCssName} ${outNode.getOutConnectionCssName()} ${this.getInConnectionCssName()} ${
       NodeConst.TinCss
-    }${outID} ${NodeConst.ToutCss}${inID}`
+    }${inID} ${NodeConst.ToutCss}${outID}`
   }
 
   getOutConnectPath(outID: number, inNode: Node<T>, inID: number) {
@@ -329,12 +369,8 @@ export class Node<T> {
     )} ${inPostion.x} ${inPostion.y}`
   }
 
-  setContent(innerHTML: string | Element) {
-    if (typeof innerHTML === 'string') {
-      this.contentEle.innerHTML = innerHTML
-    } else {
-      this.contentEle.appendChild(innerHTML)
-    }
+  setContent(html: string | Element) {
+    typeof html === 'string' ? (this.contentEle.innerHTML = html) : this.contentEle.appendChild(html)
   }
   /**
    * 设置node的位置
@@ -343,6 +379,7 @@ export class Node<T> {
   setPostion(pos: IPostion) {
     this.element.style.left = `${pos.x}px`
     this.element.style.top = `${pos.y}px`
+    this.postion = pos
   }
   getNodePostion(): IPostion {
     const domRect = this.element.getBoundingClientRect()

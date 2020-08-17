@@ -8,11 +8,11 @@
   background-image: linear-gradient(to right, #f1f1f1 1px, transparent 1px),
     linear-gradient(to bottom, #f1f1f1 1px, transparent 1px);
 }
-.flow-canvas:hover {
-  cursor: move;
+.flow-canvas {
+  cursor: cell;
 }
 
-.node {
+.flow-canvas .node {
   width: auto;
   height: auto;
   /* 允许重叠的盒子 */
@@ -23,6 +23,19 @@
   border: 1px solid rgb(168, 211, 236);
   z-index: 2;
   padding: 0px;
+  background-color: white;
+}
+
+.flow-canvas .selected {
+  box-shadow: 0 1px 20px 2px #4ea9ff;
+}
+
+.flow-canvas .node:hover {
+  cursor: move;
+}
+
+.selected {
+  cursor: grabbing;
 }
 
 .flow-canvas .node .outputs,
@@ -38,8 +51,8 @@
   top: 10%;
 }
 
-.flow-canvas .node .input_style,
-.flow-canvas .node .output_style {
+.flow-canvas .node .input_point,
+.flow-canvas .node .output_point {
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -48,16 +61,24 @@
   margin-top: 5px;
 }
 
-.flow-canvas .node .input_style {
+.flow-canvas .node .input_point,
+.flow-canvas .node .output_point:hover {
+  cursor: cell;
+}
+
+.flow-canvas .node .input_point {
   transform: translate3d(-50%, 50%, 0);
 }
-.flow-canvas .node .output_style {
+.flow-canvas .node .output_point {
   transform: translate3d(50%, 50%, 0);
 }
 
 .flow-canvas .content {
-  /* margin: auto; */
   padding: 0px;
+}
+
+.flow-canvas .connection .path:hover {
+  cursor: pointer;
 }
 
 .flow-canvas .connection {
@@ -69,6 +90,9 @@
   fill: none;
   stroke-width: 2px;
   stroke: steelblue;
+}
+.flow-canvas .selected .path {
+  stroke: #43b993;
 }
 
 .flow-canvas svg {

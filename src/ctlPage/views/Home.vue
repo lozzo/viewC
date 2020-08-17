@@ -23,23 +23,25 @@ export default {
     // HelloWorld
   },
   mounted() {
-    const wrapper = new Vue({
+    const p = new Vue({
       render: (h) =>
         h(startNode, {
           props: undefined
         })
     }).$mount()
-    console.info('node:322', wrapper.$el)
+    const html = p.$el
+    // console.info('node:322', wrapper.$el)
     const container = document.getElementById('tt')
     const vflow = new FlowNode(container)
-    const node1 = vflow.addNode({ HTML: wrapper.$el, postion: { x: 0, y: 0 }, data: {} })
+    const node1 = vflow.addNode({ HTML: html, postion: { x: 0, y: 0 }, data: {} })
     const node2 = vflow.addNode({
-      HTML: wrapper.$el.cloneNode(true),
+      HTML: html.cloneNode(true),
       postion: { x: 600, y: 250 },
       data: {}
     })
-    const node3 = vflow.addNode({ HTML: wrapper.$el.cloneNode(true), postion: { x: 300, y: 650 }, data: {} })
-    const node4 = vflow.addNode({ HTML: wrapper.$el.cloneNode(true), postion: { x: 300, y: 0 }, data: {} })
+    const node3 = vflow.addNode({ HTML: html.cloneNode(true), postion: { x: 300, y: 650 }, data: {} })
+    const node4 = vflow.addNode({ HTML: html.cloneNode(true), postion: { x: 300, y: 0 }, data: {} })
+    // debugger
     node1.addOutPut()
     node1.addOutPut()
     node2.addInPut()

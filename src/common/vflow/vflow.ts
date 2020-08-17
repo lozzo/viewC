@@ -1,5 +1,5 @@
 import { EventEmitter } from '../event'
-import { Node, IPostion, NodeOptions, NodeConst } from './node'
+import { Node, IPostion, NodeOptions, NodeConst, ToNode } from './node'
 
 const toInt = (x: any) => {
   return parseInt(x.toString())
@@ -72,29 +72,29 @@ export class FlowNode<T> extends EventEmitter {
   /**
    * 当点击时，被选中的对象
    */
-  private selectedEle: HTMLElement | null = null
-  private selectedType:
+  private selectedEle?: HTMLElement
+  private selectedType?:
     | FlowConst.CssCanvas
     | FlowConst.SelectedFlag
     | NodeConst.node
     | NodeConst.inputCssname
     | NodeConst.outputCssname
     | NodeConst.connectionCssName
-    | null = null
   /**
    * 当鼠标点击的时候，的位置，这个位置记录是为了在拖拽的
    * 时候不让被拖拽的ele的(0,0)位置瞬移到鼠标上
    */
-  private clickPostion: IPostion | null = null
+  private clickPostion?: IPostion
   /**
    * 当移动画板时，记录鼠标点击时的初始位置，计算移动多少
    */
-  private canvasMoveStartPostion: IPostion | null = null
+  private canvasMoveStartPostion?: IPostion
   private canvasNowTranslate: IPostion = { x: 0, y: 0 }
-  private drawConnectionNodeID: number | null = null
+  private drawConnectionNodeID?: number
   constructor(container: HTMLElement) {
     super()
     this.container = container
+    this.container.tabIndex = 0
     container.classList.add(FlowConst.containerCss)
     const canvas = document.createElement('div')
     canvas.classList.add(FlowConst.CssCanvas)
@@ -106,6 +106,8 @@ export class FlowNode<T> extends EventEmitter {
     this.container.addEventListener('mouseup', this.mouseUP.bind(this))
 
     this.container.addEventListener('wheel', this.zoomEnter.bind(this))
+
+    this.container.addEventListener('keydown', this.keyEventHandle.bind(this))
   }
   addNode(options: NodeOptions<T>) {
     this.nodeID = options.id ? options.id : this.nodeID
@@ -154,15 +156,16 @@ export class FlowNode<T> extends EventEmitter {
       ele = ele.closest(contentSelector)! as HTMLElement
     }
     const cssName = ele.classList ? ele.classList[0] : ''
+    console.info('dlog-vflow:157', cssName)
+    this.removeSelectFlag()
     switch (cssName) {
-      case FlowConst.SelectedFlag:
-        break
       case FlowConst.CssCanvas:
         this.selectedType = FlowConst.CssCanvas
         this.canvasMoveStartPostion = {
           x: event.x,
           y: event.y
         }
+        this.container.classList.add(FlowConst.SelectedFlag)
         break
       case FlowConst.containerCss:
         this.selectedType = FlowConst.CssCanvas
@@ -170,6 +173,7 @@ export class FlowNode<T> extends EventEmitter {
           x: event.x,
           y: event.y
         }
+        this.container.classList.add(FlowConst.SelectedFlag)
         break
       case NodeConst.node:
         this.selectedEle = ele
@@ -178,7 +182,7 @@ export class FlowNode<T> extends EventEmitter {
         break
       case NodeConst.content:
         this.selectedType = NodeConst.node
-        this.selectedEle = ele.parentElement
+        this.selectedEle = ele.parentElement!
         this.calcBL(event)
         break
       case NodeConst.inputCssname:
@@ -189,16 +193,19 @@ export class FlowNode<T> extends EventEmitter {
         this.selectedType = NodeConst.outputCssname
         this.selectedEle = event.target as HTMLElement
         break
-      case NodeConst.inputs || NodeConst.outputs:
-        this.selectedEle = ele.parentElement
-        this.selectedType = NodeConst.node
-        break
-      case NodeConst.connectionCssName || NodeConst.pathCssName:
+      // case NodeConst.inputs || NodeConst.outputs:
+      //   this.selectedEle = ele.parentElement
+      //   this.selectedType = NodeConst.node
+      //   break
+      case NodeConst.pathCssName:
         this.selectedType = NodeConst.connectionCssName
-        this.selectedEle = cssName === NodeConst.connectionCssName ? ele : ele.parentElement
+        this.selectedEle = ele.parentElement!
         break
       default:
         break
+    }
+    if (this.selectedEle !== undefined) {
+      this.selectedEle.classList.add(FlowConst.SelectedFlag)
     }
   }
 
@@ -221,8 +228,6 @@ export class FlowNode<T> extends EventEmitter {
     const nodeID = parseInt(this.selectedEle?.id.split('-')[1]!)
     const node = this.nodes.get(nodeID)!
     const postion = this.getRelativePostionInNode(event)
-    console.info('dlog-vflow:224', { x: event.x, y: event.y })
-    console.info('dlog-vflow:225', postion)
     node.setPostion(postion)
 
     const inNodes = node.inNodes
@@ -285,14 +290,15 @@ export class FlowNode<T> extends EventEmitter {
   }
 
   private mouseUP(event: MouseEvent) {
-    if (this.drawConnectionNodeID !== null) {
+    if (this.drawConnectionNodeID !== undefined) {
       this.overDrawConnect(event)
     }
-    this.selectedEle = null
-    this.selectedType = null
-    this.clickPostion = null
-    this.canvasMoveStartPostion = null
-    this.drawConnectionNodeID = null
+    this.selectedEle = undefined
+    this.selectedType = undefined
+    this.clickPostion = undefined
+    this.canvasMoveStartPostion = undefined
+    this.drawConnectionNodeID = undefined
+    this.container.classList.remove(FlowConst.SelectedFlag)
   }
   /**
    * 动态的画连接线
@@ -323,6 +329,15 @@ export class FlowNode<T> extends EventEmitter {
     outNode.connectToNode(outNode.tempOutID!, inNode, inID)
     outNode.clearTempConnection()
   }
+  /**
+   * 删除selected这个css标志，而不是删除selected的ele对象
+   */
+  private removeSelectFlag() {
+    const selectedEleC = this.canvasContainer.querySelectorAll('.' + FlowConst.SelectedFlag)
+    for (const ele of selectedEleC) {
+      ele.classList.remove(FlowConst.SelectedFlag)
+    }
+  }
   private zoomRefresh() {
     this.canvasContainer.style.transform =
       'translate(' + this.canvasNowTranslate.x + 'px, ' + this.canvasNowTranslate.y + 'px) scale(' + this.zoom + ')'
@@ -332,14 +347,14 @@ export class FlowNode<T> extends EventEmitter {
   }
   private zoomIn() {
     if (this.zoom < this.zoomMax) {
-      this.zoom += 0.1
+      this.zoom += 0.01
       this.zoomRefresh()
     }
   }
 
   private zoomOut() {
     if (this.zoom > this.zoomMin) {
-      this.zoom -= 0.1
+      this.zoom -= 0.01
       this.zoomRefresh()
     }
   }
@@ -355,6 +370,48 @@ export class FlowNode<T> extends EventEmitter {
       } else {
         this.zoomIn()
       }
+    }
+  }
+  private keyEventHandle(event: KeyboardEvent) {
+    // console.info('dlog-vflow:377', event)
+    if (event.key === 'Delete' || (event.key === 'Backspace' && event.metaKey)) {
+      this.keyDelete()
+    }
+  }
+
+  /**
+   * 删除事件
+   */
+  private keyDelete() {
+    const selectedEle = this.container.querySelector('.' + FlowConst.SelectedFlag)
+    if (selectedEle === null) return
+    console.info('dlog-vflow:389', selectedEle)
+    const classList = selectedEle.classList
+    const cssName = classList[0]
+
+    let nodoID
+    let outID
+    let outNode
+    let inNode
+    let inID
+
+    if (cssName === NodeConst.node) {
+      nodoID = toInt(selectedEle.id.split('-')[1])
+      this.deleteNode(nodoID)
+    }
+
+    if (cssName === NodeConst.outputCssname) {
+      outID = toInt(classList[1].split('-')[1])
+      nodoID = toInt(selectedEle.parentElement?.parentElement?.id.split('-')[1])
+      const node = this.nodes.get(this.nodeID)!
+    }
+
+    if (cssName === NodeConst.connectionCssName) {
+      outNode = this.nodes.get(toInt(classList[1].split(NodeConst.ToutConnectCssName + '-')[1]))
+      inNode = this.nodes.get(toInt(classList[2].split(NodeConst.TinConnectCssName + '-')[1]))!
+      inID = toInt(classList[3].split(NodeConst.TinCss)[1])
+      outID = toInt(classList[4].split(NodeConst.ToutCss)[1])
+      outNode?.deleteConnectionToNode(outID, inNode, inID)
     }
   }
 }
