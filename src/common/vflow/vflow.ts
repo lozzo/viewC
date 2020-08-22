@@ -102,7 +102,7 @@ export class VFlow<T> extends EventEmitter {
   private canvasNowTranslate: IPostion = { x: 0, y: 0 }
   private drawConnectionNodeID?: number
   private render?: any
-  private registedNode: Map<string, RegistNode> = new Map()
+  private rNode: Map<string, RegistNode> = new Map()
   constructor(container: HTMLElement, render?: any) {
     super()
     this.render = render
@@ -124,14 +124,15 @@ export class VFlow<T> extends EventEmitter {
   }
 
   registNode(typo: string, node: RegistNode) {
-    this.registedNode.set(typo, node)
+    this.rNode.set(typo, node)
   }
 
   private getRegistEle(typo: string) {
-    const nodeTypo = this.registedNode.get(typo)!
+    const nodeTypo = this.rNode.get(typo)!
     const wrapper = new this.render({
-      render: (h: Function) => h(nodeTypo.html, { props: nodeTypo.props }, ...nodeTypo.options).$mount()
-    })
+      render: (h: Function) => h(nodeTypo.html, { props: nodeTypo.props }),
+      ...nodeTypo.options
+    }).$mount()
     return wrapper.$el as Element
   }
 

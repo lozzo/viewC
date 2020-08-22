@@ -23,24 +23,18 @@ export default {
     // HelloWorld
   },
   mounted() {
-    const p = new Vue({
-      render: (h) =>
-        h(startNode, {
-          props: undefined
-        })
-    }).$mount()
-    const html = p.$el
     // console.info('node:322', wrapper.$el)
     const container = document.getElementById('tt')
-    const vflow = new VFlow(container)
-    const node1 = vflow.addNode({ HTML: html, postion: { x: 0, y: 0 }, data: {} })
+    const vflow = new VFlow(container, Vue)
+    vflow.registNode('card', { html: startNode })
+    const node1 = vflow.addNode({ typo: 'card', postion: { x: 0, y: 0 }, data: {} })
     const node2 = vflow.addNode({
-      HTML: html.cloneNode(true),
+      typo: 'card',
       postion: { x: 600, y: 250 },
       data: {}
     })
-    const node3 = vflow.addNode({ HTML: html.cloneNode(true), postion: { x: 300, y: 650 }, data: {} })
-    const node4 = vflow.addNode({ HTML: html.cloneNode(true), postion: { x: 300, y: 0 }, data: {} })
+    const node3 = vflow.addNode({ typo: 'card', postion: { x: 300, y: 650 }, data: {} })
+    const node4 = vflow.addNode({ typo: 'card', postion: { x: 300, y: 0 }, data: {} })
     // debugger
     node1.addOutPut()
     node1.addOutPut()
