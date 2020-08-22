@@ -70,6 +70,7 @@ export interface NodeOptions<T> {
   id?: number
   postion?: IPostion
   HTML: string | Element
+  typo?: string
   data: T
   css?: string
 }
@@ -171,6 +172,7 @@ export class Node<T> {
   public tempOutID: number | null = null
   public zoom: number
   public contentHTML?: string
+  public regTypo?: string
 
   constructor(parentNode: HTMLElement, options: NodeOptions<T>, zoom: number) {
     this.parentNode = parentNode
@@ -198,6 +200,7 @@ export class Node<T> {
     this.element = element
     this.outputEle = output
     this.contentEle = content
+    this.regTypo = options.typo
     this.parentNode.appendChild(element)
     this.setContent(options.HTML)
     options.postion ? this.setPostion(options.postion) : ''

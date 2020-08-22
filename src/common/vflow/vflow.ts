@@ -45,6 +45,11 @@ interface FlowEvent<T> {
     inID: number
   }
 }
+interface RegistNode {
+  html: any
+  props?: any
+  options?: any
+}
 
 export interface VFlow<T> {
   addNode(options: NodeOptions<T>): Node<T>
@@ -96,8 +101,11 @@ export class VFlow<T> extends EventEmitter {
   private canvasMoveStartPostion?: IPostion
   private canvasNowTranslate: IPostion = { x: 0, y: 0 }
   private drawConnectionNodeID?: number
-  constructor(container: HTMLElement) {
+  private render?: any
+  private registedNode: Map<string, RegistNode> = new Map()
+  constructor(container: HTMLElement, render?: any) {
     super()
+    this.render = render
     this.container = container
     this.container.tabIndex = 0
     container.classList.add(FlowConst.containerCss)
@@ -115,9 +123,22 @@ export class VFlow<T> extends EventEmitter {
     this.container.addEventListener('keydown', this.keyEventHandle.bind(this))
   }
 
+  registNode(typo: string, node: RegistNode) {
+    this.registedNode.set(typo, node)
+  }
+
+  private getRegistEle(typo: string) {
+    const nodeTypo = this.registedNode.get(typo)!
+    const wrapper = new this.render({
+      render: (h: Function) => h(nodeTypo.html, { props: nodeTypo.props }, ...nodeTypo.options).$mount()
+    })
+    return wrapper.$el as Element
+  }
+
   addNode(options: NodeOptions<T>) {
     this.nodeID = options.id ? options.id : this.nodeID
     options.id = this.nodeID
+    options.HTML = options.typo ? this.getRegistEle(options.typo) : options.HTML
     const node = new Node<T>(this.canvasContainer, options, this.zoom)
     this.nodes.set(this.nodeID, node)
     this.nodeID += 1
