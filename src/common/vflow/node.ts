@@ -64,15 +64,13 @@ export interface IPostion {
  * @param outputsID 输出连接到何处
  * @param inputsID 被那些节点连接
  * @param data T
- * @param css 自定义css样式类
  */
 export interface NodeOptions<T> {
   id?: number
   postion?: IPostion
-  HTML: string | Element
+  HTML?: string | Element
   typo?: string
   data: T
-  css?: string
 }
 
 export interface ToNode {
@@ -202,7 +200,7 @@ export class Node<T> {
     this.contentEle = content
     this.regTypo = options.typo
     this.parentNode.appendChild(element)
-    this.setContent(options.HTML)
+    this.setContent(options.HTML!)
     options.postion ? this.setPostion(options.postion) : ''
   }
 
@@ -397,7 +395,12 @@ export class Node<T> {
   }
 
   setContent(html: string | Element) {
-    typeof html === 'string' ? (this.contentEle.innerHTML = html) : this.contentEle.appendChild(html)
+    if (typeof html === 'string') {
+      this.contentEle.innerHTML = html
+      this.contentHTML = html
+    } else {
+      this.contentEle.appendChild(html)
+    }
   }
 
   /**

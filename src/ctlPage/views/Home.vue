@@ -26,7 +26,7 @@ export default {
     // console.info('node:322', wrapper.$el)
     const container = document.getElementById('tt')
     const vflow = new VFlow(container, Vue)
-    vflow.registNode('card', { html: startNode })
+    const card = vflow.registNode('card', { html: startNode })
     const node1 = vflow.addNode({ typo: 'card', postion: { x: 0, y: 0 }, data: {} })
     const node2 = vflow.addNode({
       typo: 'card',

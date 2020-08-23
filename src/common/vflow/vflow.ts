@@ -51,6 +51,11 @@ interface RegistNode {
   options?: any
 }
 
+interface ExportNodeData<T> extends NodeOptions<T> {
+  toNode: ToNode[]
+  inNode: ToNode[]
+}
+
 export interface VFlow<T> {
   addNode(options: NodeOptions<T>): Node<T>
   deleteNode(id: number): void
@@ -125,6 +130,7 @@ export class VFlow<T> extends EventEmitter {
 
   registNode(typo: string, node: RegistNode) {
     this.rNode.set(typo, node)
+    return typo
   }
 
   private getRegistEle(typo: string) {
@@ -456,5 +462,34 @@ export class VFlow<T> extends EventEmitter {
       outID = toInt(classList[4].split(NodeConst.ToutCss)[1])
       outNode?.deleteConnectionToNode(outID, inNode, inID)
     }
+  }
+
+  export() {
+    const exportData: ExportNodeData<T>[] = []
+    this.nodes.forEach((node) => {
+      const data = {
+        id: node.ID,
+        postion: node.postion,
+        HTML: node.contentHTML,
+        typo: node.regTypo,
+        data: node.data,
+        toNode: node.toNodes,
+        inNode: node.inNodes
+      }
+      exportData.push(data)
+    })
+    return exportData
+  }
+  import(nodeInfos: ExportNodeData<T>[]) {
+    nodeInfos.forEach((info) => {
+      this.addNode(info)
+    })
+    nodeInfos.forEach((info) => {
+      const outNode = this.nodes.get(info.id!)
+      info.toNode.forEach((_info) => {
+        const inNode = this.nodes.get(_info.nodeID)!
+        outNode?.connectToNode(_info.outputID, inNode, _info.inputID)
+      })
+    })
   }
 }
