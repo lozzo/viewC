@@ -4,7 +4,7 @@
     <!-- <div class="node"> -->
     <!-- <startNode></startNode> -->
     <!-- </div> -->
-    <!-- <HelloWorld msg="Welcome to Your Vue.js App" /> -->
+    <HelloWorld msg="Welcome to Your Vue.js App" />
     <div id="tt"></div>
   </div>
 </template>
@@ -12,15 +12,16 @@
 <script>
 // @ is an alias to /src
 import Vue from 'vue'
-import { VFlow } from '../../common/vflow/vflow'
-import styleDrawflow from '../../common/vflow/vflow.css'
+import { VFlow } from '../../lib/vflow/vflow'
+import styleDrawflow from '../../lib/vflow/vflow.css'
 import startNode from '../components/flowNode/startNode.vue'
+import HelloWorld from '../components/HelloWorld'
 
 export default {
   name: 'Home',
   components: {
     // startNode
-    // HelloWorld
+    HelloWorld
   },
   mounted() {
     // console.info('node:322', wrapper.$el)

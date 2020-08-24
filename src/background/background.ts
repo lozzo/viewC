@@ -1,5 +1,5 @@
-import { colorInfoLog } from './common/utils'
-import { getMsgSender } from './common/messages'
+import { colorInfoLog } from '../lib/utils'
+import { getMsgSender } from '../lib/messages'
 ;(async () => {
   colorInfoLog('background', 'info', 'init.....')
   const sender = await getMsgSender('backgroundJs')

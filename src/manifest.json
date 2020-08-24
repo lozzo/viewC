@@ -1,6 +1,6 @@
 {
-  "name": "chrome-extension-vue-typescript",
-  "description": "vue typescript demo",
+  "name": "ViewC",
+  "description": "Crawl what you see",
   "version": "1.0.0",
   "manifest_version": 2,
   "icons": {
@@ -11,7 +11,7 @@
     "default_title": "cevt",
     "default_popup": "popup/popup.html"
   },
-  "devtools_page": "entry/initDevtools.html",
+  "devtools_page": "devtools/initDevtools.html",
   "background": {
     "scripts": [
       "js/background.js"

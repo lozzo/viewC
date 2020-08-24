@@ -1,6 +1,6 @@
-import { Selector } from './common/selector'
-import { getMsgSender } from './common/messages'
-import { colorInfoLog } from './common/utils'
+import { Selector } from '../lib/selector'
+import { getMsgSender } from '../lib/messages'
+import { colorInfoLog } from '../lib/utils'
 ;(async () => {
   colorInfoLog('contentjs', 'Init', 'init.....')
   let selector: Selector

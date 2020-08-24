@@ -13,23 +13,25 @@ module.exports = {
     popup: {
       entry: 'src/popup/main.ts',
       filename: 'popup/popup.html'
+    },
+    devtools: {
+      entry: 'src/devtools/initDevtools.ts',
+      filename: 'devtools/initDevtools.html'
     }
   },
   configureWebpack: {
     entry: {
-      background: './src/background.ts',
-      contentjs: './src/contentjs.ts'
+      background: './src/background/background.ts',
+      contentjs: './src/contentInject/contentjs.ts'
     },
     output: {
       filename: 'js/[name].js'
     },
     plugins: [
-      new CopyWebpackPlugin([
-        {
-          from: './src/manifest.json',
-          to: 'manifest.json'
-        }
-      ]),
+      new CopyWebpackPlugin([{
+        from: './src/manifest.json',
+        to: 'manifest.json'
+      }]),
       new webpack.DefinePlugin({
         global: 'window'
       })

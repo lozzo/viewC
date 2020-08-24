@@ -4,12 +4,12 @@ import router from './router'
 import store from './store'
 import 'view-design/dist/styles/iview.css'
 import ViewUI from 'view-design'
-import { colorInfoLog } from '../common/utils'
-// import { getMsgSender } from '../common/messages'
+import { colorInfoLog } from '../lib/utils'
+import { getMsgSender } from '../lib/messages'
 ;(async () => {
   Vue.use(ViewUI, { size: 'small' })
-  // const msgSender = await getMsgSender('devtoolsJs')
-  // Vue.prototype.$msgSender = msgSender
+  const msgSender = await getMsgSender('devtoolsJs')
+  Vue.prototype.$msgSender = msgSender
   Vue.config.productionTip = false
   new Vue({
     router,
