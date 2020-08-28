@@ -32,30 +32,31 @@ interface CallbackItem<K> {
   method: K
 }
 
-export async function getMsgSender(type: MsgType) {
+export async function getMsgSender<T>(type: MsgType): Promise<MessageSender<T>> {
   switch (type) {
     case INJECTJS: {
-      return new InjectJsMessageSender()
+      return new InjectJsMessageSender<T>()
     }
     case CONTENTJS: {
-      return await ContentJsMessageSender.creat()
+      return await ContentJsMessageSender.creat<T>()
     }
     case BACKGROUNDJS: {
-      return new BackgroundMessageSender()
+      return new BackgroundMessageSender<T>()
     }
     case DEVTOOLSJS: {
-      return await DevtoolsMessageSender.creat()
+      return await DevtoolsMessageSender.creat<T>()
     }
     case POPUPJS: {
-      return await PopupMessageSender.creat()
+      return await PopupMessageSender.creat<T>()
     }
   }
 }
-export interface BaseMessageSender<T> {
+export interface MessageSender<T> {
   emit<K extends keyof T>(K: K, msg: MessageProtocol<K, T>): boolean
+  on<K extends keyof T>(envent: K, listener: (data: T[K]) => void): this
 }
 
-export class BaseMessageSender<T> extends EventEmitter {
+export class MessageSender<T> extends EventEmitter {
   public tabID: number | null
   private messageID: number = 0
   public type: MsgType = INJECTJS
@@ -177,7 +178,7 @@ export class BaseMessageSender<T> extends EventEmitter {
   }
 }
 
-class InjectJsMessageSender<T> extends BaseMessageSender<T> {
+class InjectJsMessageSender<T> extends MessageSender<T> {
   constructor() {
     super()
     this.type = INJECTJS
@@ -192,7 +193,7 @@ class InjectJsMessageSender<T> extends BaseMessageSender<T> {
   }
 }
 
-class ContentJsMessageSender<T> extends BaseMessageSender<T> {
+class ContentJsMessageSender<T> extends MessageSender<T> {
   private toBackGroundPort: chrome.runtime.Port
   constructor(toBackGroundPort: chrome.runtime.Port, tabID: number) {
     super()
@@ -202,13 +203,13 @@ class ContentJsMessageSender<T> extends BaseMessageSender<T> {
     window.addEventListener('message', this._onEventMessage.bind(this))
     toBackGroundPort.onMessage.addListener(this._onMessage.bind(this))
   }
-  static async creat() {
+  static async creat<T>() {
     const tabID = await ContentJsMessageSender.getTabID()
     const toBackGroundPort = chrome.runtime.connect({
       name: `${CONTENTJS}-${tabID}`
     })
     // toBackGroundPort.postMessage(WHATISMYTABID);
-    return new ContentJsMessageSender(toBackGroundPort, tabID)
+    return new ContentJsMessageSender<T>(toBackGroundPort, tabID)
   }
 
   static async getTabID(): Promise<number> {
@@ -257,7 +258,7 @@ class ContentJsMessageSender<T> extends BaseMessageSender<T> {
   }
 }
 
-class BackgroundMessageSender<T> extends BaseMessageSender<T> {
+class BackgroundMessageSender<T> extends MessageSender<T> {
   private devtoolsPorts: Map<number, chrome.runtime.Port>
   private contentJsPorts: Map<number, chrome.runtime.Port>
   private popupPort?: chrome.runtime.Port
@@ -333,7 +334,7 @@ class BackgroundMessageSender<T> extends BaseMessageSender<T> {
 /**
  * devTools的消息处理机制
  */
-class DevtoolsMessageSender<T> extends BaseMessageSender<T> {
+class DevtoolsMessageSender<T> extends MessageSender<T> {
   private toBackGroundPort: chrome.runtime.Port
   constructor(port: chrome.runtime.Port, tabID: number) {
     super()
@@ -343,12 +344,12 @@ class DevtoolsMessageSender<T> extends BaseMessageSender<T> {
     this.toBackGroundPort.onMessage.addListener(this._onMessage.bind(this))
   }
 
-  static async creat() {
+  static async creat<T>() {
     const tabID = await getCurrentTabId()
     const toBackGroundPort = chrome.runtime.connect({
       name: `${DEVTOOLSJS}-${tabID}`
     })
-    return new DevtoolsMessageSender(toBackGroundPort, tabID!)
+    return new DevtoolsMessageSender<T>(toBackGroundPort, tabID!)
   }
 
   _send<K extends keyof T>(msg: MessageProtocol<K, T>) {
@@ -360,7 +361,7 @@ class DevtoolsMessageSender<T> extends BaseMessageSender<T> {
   }
 }
 
-class PopupMessageSender<T> extends BaseMessageSender<T> {
+class PopupMessageSender<T> extends MessageSender<T> {
   private toBackGroundPort: chrome.runtime.Port
   constructor(port: chrome.runtime.Port, tabID: number) {
     super()
@@ -370,12 +371,12 @@ class PopupMessageSender<T> extends BaseMessageSender<T> {
     this.toBackGroundPort.onMessage.addListener(this._onMessage.bind(this))
   }
 
-  static async creat() {
+  static async creat<T>() {
     const tabID = await getCurrentTabId()
     const toBackGroundPort = chrome.runtime.connect({
       name: `${POPUPJS}-${tabID}`
     })
-    return new DevtoolsMessageSender(toBackGroundPort, tabID!)
+    return new DevtoolsMessageSender<T>(toBackGroundPort, tabID!)
   }
   _send<K extends keyof T>(msg: MessageProtocol<K, T>) {
     this.toBackGroundPort.postMessage(msg)
