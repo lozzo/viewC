@@ -9,20 +9,20 @@ const POPUPJS = 'popupJs'
 export type MsgType = typeof BACKGROUNDJS | typeof CONTENTJS | typeof INJECTJS | typeof DEVTOOLSJS | typeof POPUPJS
 
 // 这玩意儿大家自己搞一个，别写成一样的了，如果用到这玩意儿了，消息就乱套了
-const TOKEN = 'dknf;sownfoiflkmdI32f908nowinefpu42knas@OI#das'
+const TOKEN = 'dknf;dhgfc6rtdiycvkugdta4aoi;hpu0[jkbi786gh@OI#das'
 const WHATISMYTABID = 'what is my tabID?'
 
 interface MessageProtocol<T extends keyof U, U> {
   token: string
-  to?: MsgType
-  toTabID?: number | null
-  from?: MsgType
-  fromTabID?: number | null
-  reply?: boolean
+  to: MsgType
+  toTabID: number | null
+  from: MsgType
+  fromTabID: number | null
+  reply: boolean
   InjectRedict?: boolean
   method: T
   messageID: number
-  data?: U[T]
+  data: U[T]
   error?: any
 }
 
@@ -32,7 +32,11 @@ interface CallbackItem<K> {
   method: K
 }
 
-export async function getMsgSender<T>(type: MsgType): Promise<MessageSender<T>> {
+/**
+ * 范型参数确定消息的类型
+ * @param type 消息的类型，不同的脚本需要使用各自对应的类型
+ */
+export async function getMsgSender<T extends { [key: string]: any }>(type: MsgType): Promise<MessageSender<T>> {
   switch (type) {
     case INJECTJS: {
       return new InjectJsMessageSender<T>()
@@ -52,7 +56,7 @@ export async function getMsgSender<T>(type: MsgType): Promise<MessageSender<T>> 
   }
 }
 export interface MessageSender<T> {
-  emit<K extends keyof T>(K: K, msg: MessageProtocol<K, T>): boolean
+  emit<K extends keyof T>(envent: K, msg: MessageProtocol<K, T>): boolean
   on<K extends keyof T>(envent: K, listener: (data: T[K]) => void): this
 }
 
