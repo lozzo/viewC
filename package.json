@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@medv/finder": "^2.0.0",
+    "axios": "^0.20.0",
     "core-js": "^3.6.5",
     "view-design": "^4.0.0",
     "vue": "^2.6.11",

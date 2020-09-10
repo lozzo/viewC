@@ -19,7 +19,11 @@
   },
   "permissions": [
     "tabs",
-    "activeTab"
+    "activeTab",
+    "webRequest",
+    "webRequestBlocking",
+    "proxy",
+    "<all_urls>"
   ],
   "content_scripts": [
     {

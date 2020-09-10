@@ -12,7 +12,7 @@ export type MsgType = typeof BACKGROUNDJS | typeof CONTENTJS | typeof INJECTJS |
 const TOKEN = 'dknf;dhgfc6rtdiycvkugdta4aoi;hpu0[jkbi786gh@OI#das'
 const WHATISMYTABID = 'what is my tabID?'
 
-export interface MessageProtocol<T, U> {
+interface MessageProtocol<T, U> {
   token: string
   to: MsgType
   toTabID?: number
@@ -65,6 +65,12 @@ export async function getMsgSender<T extends Record<keyof T, Imsg<any, any>>>(
 
 export interface MessageSender<Q extends Record<keyof Q, Imsg<any, any>>> extends EventEmitter {
   emit<K extends keyof Q>(event: K, data: MessageProtocol<K, Q[K]['req']>, echo: (data: Q[K]['resp']) => void): boolean
+
+  /**
+   *
+   * @param envent 消息事件，即method
+   * @param listener 回调函数
+   */
   on<K extends keyof Q>(
     envent: K,
     listener: (data: MessageProtocol<K, Q[K]['req']>, echo: (data: Q[K]['resp']) => void) => void
@@ -163,41 +169,41 @@ export class MessageSender<Q extends Record<keyof Q, Imsg<any, any>>> extends Ev
     return this.sendEvent(data)
   }
 
-  sendMsgToDevtoolJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number) {
+  sendEventToDevtoolJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number) {
     const data = this.genMessageProtocol(msgData, method, DEVTOOLSJS, toTabID)
     this._send(data)
   }
 
-  sendEventToDevtoolJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number): Promise<Q[K]['resp']> {
+  sendMsgToDevtoolJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number): Promise<Q[K]['resp']> {
     const data = this.genMessageProtocol(msgData, method, DEVTOOLSJS, toTabID)
     return this.sendEvent(data)
   }
 
-  sendMsgToPopupJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number) {
+  sendEventToPopupJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number) {
     const data = this.genMessageProtocol(msgData, method, POPUPJS, toTabID)
     this._send(data)
   }
-  sendEventToPopupJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number): Promise<Q[K]['resp']> {
+  sendMsgToPopupJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number): Promise<Q[K]['resp']> {
     const data = this.genMessageProtocol(msgData, method, POPUPJS, toTabID)
     return this.sendEvent(data)
   }
 
-  sendMsgToBackgroundJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number) {
+  sendEventToBackgroundJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number) {
     const data = this.genMessageProtocol(msgData, method, BACKGROUNDJS, toTabID)
     this._send(data)
   }
 
-  sendEventToBackgroundJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number): Promise<Q[K]['resp']> {
+  sendMsgToBackgroundJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number): Promise<Q[K]['resp']> {
     const data = this.genMessageProtocol(msgData, method, BACKGROUNDJS, toTabID)
     return this.sendEvent(data)
   }
 
-  sendMsgToInjectJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number) {
+  sendEventToInjectJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number) {
     const data = this.genMessageProtocol(msgData, method, INJECTJS, toTabID)
     this._send(data)
   }
 
-  sendEventToInjectJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number): Promise<Q[K]['resp']> {
+  sendMsgToInjectJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number): Promise<Q[K]['resp']> {
     const data = this.genMessageProtocol(msgData, method, INJECTJS, toTabID)
     return this.sendEvent(data)
   }

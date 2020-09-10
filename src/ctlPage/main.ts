@@ -6,7 +6,7 @@ import 'view-design/dist/styles/iview.css'
 import ViewUI from 'view-design'
 import { colorInfoLog } from '../lib/utils'
 import { getMsgSender } from '../lib/messages'
-import { IM } from '@/consts'
+import { IM } from '@/types'
 ;(async () => {
   Vue.use(ViewUI, { size: 'small' })
   // const msgSender = await getMsgSender<CommonMsg>('devtoolsJs')
