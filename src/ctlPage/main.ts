@@ -6,10 +6,13 @@ import 'view-design/dist/styles/iview.css'
 import ViewUI from 'view-design'
 import { colorInfoLog } from '../lib/utils'
 import { getMsgSender } from '../lib/messages'
+import { IM } from '@/consts'
 ;(async () => {
   Vue.use(ViewUI, { size: 'small' })
-  const msgSender = await getMsgSender('devtoolsJs')
-  Vue.prototype.$msgSender = msgSender
+  // const msgSender = await getMsgSender<CommonMsg>('devtoolsJs')
+  // const a = await msgSender.sendEventToBackgroundJS('pong', 'ping')
+  // console.info('dlog-main:14', a)
+  // Vue.prototype.$msgSender = msgSender
   Vue.config.productionTip = false
   new Vue({
     router,

@@ -14,8 +14,8 @@ export default class HelloWorld extends Vue {
   @Prop() private isSelect = false
 
   private cp() {
-    this.$msgSender.sendEventToContentJS('', this.isSelect ? 'startSelect' : 'stopSelect', null)
-    this.isSelect = !this.isSelect
+    // this.$msgSender.sendEventToContentJS('', this.isSelect ? 'startSelect' : 'stopSelect', null)
+    // this.isSelect = !this.isSelect
   }
 }
 </script>

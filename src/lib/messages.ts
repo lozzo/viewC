@@ -12,17 +12,17 @@ export type MsgType = typeof BACKGROUNDJS | typeof CONTENTJS | typeof INJECTJS |
 const TOKEN = 'dknf;dhgfc6rtdiycvkugdta4aoi;hpu0[jkbi786gh@OI#das'
 const WHATISMYTABID = 'what is my tabID?'
 
-interface MessageProtocol<T extends keyof U, U> {
+export interface MessageProtocol<T, U> {
   token: string
   to: MsgType
-  toTabID: number | null
+  toTabID?: number
   from: MsgType
-  fromTabID: number | null
+  fromTabID?: number
   reply: boolean
   InjectRedict?: boolean
   method: T
   messageID: number
-  data: U[T]
+  data: U
   error?: any
 }
 
@@ -32,64 +32,78 @@ interface CallbackItem<K> {
   method: K
 }
 
+export interface Imsg<T, R> {
+  req: T
+  resp: R
+}
+
 /**
  * 范型参数确定消息的类型
  * @param type 消息的类型，不同的脚本需要使用各自对应的类型
  */
-export async function getMsgSender<T extends { [key: string]: any }>(type: MsgType): Promise<MessageSender<T>> {
+export async function getMsgSender<T extends Record<keyof T, Imsg<any, any>>>(
+  type: typeof CONTENTJS | typeof BACKGROUNDJS
+): Promise<MessageSender<T>> {
   switch (type) {
-    case INJECTJS: {
-      return new InjectJsMessageSender<T>()
-    }
+    // case INJECTJS: {
+    //   return new InjectJsMessageSender<T>()
+    // }
     case CONTENTJS: {
       return await ContentJsMessageSender.creat<T>()
     }
     case BACKGROUNDJS: {
       return new BackgroundMessageSender<T>()
     }
-    case DEVTOOLSJS: {
-      return await DevtoolsMessageSender.creat<T>()
-    }
-    case POPUPJS: {
-      return await PopupMessageSender.creat<T>()
-    }
+    // case DEVTOOLSJS: {
+    //   return await DevtoolsMessageSender.creat<T>()
+    // }
+    // case POPUPJS: {
+    //   return await PopupMessageSender.creat<T>()
+    // }
   }
-}
-export interface MessageSender<T> {
-  emit<K extends keyof T>(envent: K, msg: MessageProtocol<K, T>): boolean
-  on<K extends keyof T>(envent: K, listener: (data: T[K]) => void): this
 }
 
-export class MessageSender<T> extends EventEmitter {
-  public tabID: number | null
+export interface MessageSender<Q extends Record<keyof Q, Imsg<any, any>>> extends EventEmitter {
+  emit<K extends keyof Q>(event: K, data: MessageProtocol<K, Q[K]['req']>, echo: (data: Q[K]['resp']) => void): boolean
+  on<K extends keyof Q>(
+    envent: K,
+    listener: (data: MessageProtocol<K, Q[K]['req']>, echo: (data: Q[K]['resp']) => void) => void
+  ): this
+}
+
+export class MessageSender<Q extends Record<keyof Q, Imsg<any, any>>> extends EventEmitter {
+  public tabID?: number
   private messageID: number = 0
   public type: MsgType = INJECTJS
-  private callBacks = new Map<number, CallbackItem<keyof T>>()
+  private callBacks = new Map<number, CallbackItem<keyof Q>>()
   constructor() {
     super()
-    this.tabID = null
   }
-  _send<K extends keyof T>(msg: MessageProtocol<K, T>) {
+  protected _send<K extends keyof Q>(msg: MessageProtocol<K, Q[K]['req']>) {
     throw new Error(`需要子类来实现这个方法`)
   }
-  onMessage<K extends keyof T>(msg: MessageProtocol<K, T>) {
-    console.log('收到消息：', msg)
+  onMessage<K extends keyof Q>(msg: MessageProtocol<K, Q[K]['resp'] | Q[K]['req']>) {
     if (msg.reply) {
-      console.log('处理回复消息')
       this.handleReply(msg)
     } else {
-      console.log('直接消息处理')
       const method = msg.method
-      this.emit(method, msg)
+      this.emit(method, msg, (data: Q[K]['resp']) => {
+        this.reply(msg, method, data)
+      })
     }
   }
-  sendEvent<K extends keyof T>(msg: MessageProtocol<K, T>): Promise<CallbackItem<keyof T>> {
+  sendEvent<K extends keyof Q>(msg: MessageProtocol<K, Q[K]['req']>): Promise<Q[K]['resp']> {
     this._send(msg)
     return new Promise((resolve, reject) => {
       this.callBacks.set(msg.messageID!, { resolve, reject, method: msg.method! })
     })
   }
-  reply<K extends keyof T>(msg: MessageProtocol<K, T>, result: any = null, error: any = null) {
+  reply<K extends keyof Q, P extends keyof Q>(
+    msg: MessageProtocol<K, Q[K]['resp']>,
+    method: P,
+    result: Q[P]['req'] = null,
+    error: any = null
+  ) {
     const data = {
       token: TOKEN,
       from: msg.to,
@@ -97,14 +111,15 @@ export class MessageSender<T> extends EventEmitter {
       reply: true,
       to: msg.from,
       toTabID: msg.fromTabID,
-      method: msg.method,
+      method: method,
       data: result,
-      error: error
-    } as MessageProtocol<K, T>
+      error: error,
+      messageID: msg.messageID
+    }
     this._send(data)
   }
 
-  handleReply<K extends keyof T>(msg: MessageProtocol<K, T>) {
+  handleReply<K extends keyof Q>(msg: MessageProtocol<K, Q[K]['resp']['data']>) {
     const id = msg.messageID
     const error = msg.error
     const callback = this.callBacks.get(id)
@@ -115,89 +130,94 @@ export class MessageSender<T> extends EventEmitter {
         callback.reject(new Error(`Protocol error (${callback.method}): ${error.message} ${error.data}`))
       } else {
         console.log('resolve')
-        callback.resolve(msg)
+        callback.resolve(msg.data)
       }
     }
   }
 
-  genMessageProtocol<K extends keyof T>(msgData: T[K], method: K, to: MsgType, tabID = null): MessageProtocol<K, T> {
+  genMessageProtocol<K extends keyof Q>(
+    msgData: Q[K]['req'],
+    method: K,
+    to: MsgType,
+    tabID?: number
+  ): MessageProtocol<K, Q[K]['req']> {
     return {
       token: TOKEN,
       from: this.type,
       fromTabID: this.tabID,
       reply: false,
       to: to,
-      toTabID: tabID === null ? this.tabID : tabID,
+      toTabID: tabID === undefined ? this.tabID : tabID,
       method: method,
       messageID: this.messageID++,
       data: msgData
     }
   }
-  sendMsgToContentJS<K extends keyof T>(msgData: T[K], method: K, toTabID = null) {
+  sendMsgToContentJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number) {
     const data = this.genMessageProtocol(msgData, method, CONTENTJS, toTabID)
     this._send(data)
   }
-  sendEventToContentJS<K extends keyof T>(msgData: T[K], method: K, toTabID = null): Promise<CallbackItem<keyof T>> {
+  sendEventToContentJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number): Promise<Q[K]['resp']> {
     const data = this.genMessageProtocol(msgData, method, CONTENTJS, toTabID)
     return this.sendEvent(data)
   }
 
-  sendMsgToDevtoolJS<K extends keyof T>(msgData: T[K], method: K, toTabID = null) {
-    const data = this.genMessageProtocol(msgData, method, DEVTOOLSJS, toTabID)
-    this._send(data)
-  }
+  // sendMsgToDevtoolJS<K extends keyof T>(msgData: T[K], method: K, toTabID = null) {
+  //   const data = this.genMessageProtocol(msgData, method, DEVTOOLSJS, toTabID)
+  //   this._send(data)
+  // }
 
-  sendMsgToPopupJS<K extends keyof T>(msgData: T[K], method: K, toTabID = null) {
-    const data = this.genMessageProtocol(msgData, method, POPUPJS, toTabID)
-    this._send(data)
-  }
+  // sendMsgToPopupJS<K extends keyof T>(msgData: T[K], method: K, toTabID = null) {
+  //   const data = this.genMessageProtocol(msgData, method, POPUPJS, toTabID)
+  //   this._send(data)
+  // }
 
-  sendEventToDevtoolJS<K extends keyof T>(msgData: T[K], method: K, toTabID = null): Promise<CallbackItem<keyof T>> {
-    const data = this.genMessageProtocol(msgData, method, DEVTOOLSJS, toTabID)
-    return this.sendEvent(data)
-  }
+  // sendEventToDevtoolJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number): Promise<Q[K]['resp']> {
+  //   const data = this.genMessageProtocol(msgData, method, DEVTOOLSJS, toTabID)
+  //   return this.sendEvent(data)
+  // }
 
-  sendMsgToBackgroundJS<K extends keyof T>(msgData: T[K], method: K, toTabID = null) {
+  sendMsgToBackgroundJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number) {
     const data = this.genMessageProtocol(msgData, method, BACKGROUNDJS, toTabID)
     this._send(data)
   }
 
-  sendEventToBackgroundJS<K extends keyof T>(msgData: T[K], method: K, toTabID = null): Promise<CallbackItem<keyof T>> {
+  sendEventToBackgroundJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number): Promise<Q[K]['resp']> {
     const data = this.genMessageProtocol(msgData, method, BACKGROUNDJS, toTabID)
     return this.sendEvent(data)
   }
 
-  sendMsgToInjectJS<K extends keyof T>(msgData: T[K], method: K, toTabID = null) {
-    const data = this.genMessageProtocol(msgData, method, INJECTJS, toTabID)
-    this._send(data)
-  }
+  // sendMsgToInjectJS<K extends keyof T>(msgData: T[K], method: K, toTabID = null) {
+  //   const data = this.genMessageProtocol(msgData, method, INJECTJS, toTabID)
+  //   this._send(data)
+  // }
 
-  sendEventToInjectJS<K extends keyof T>(msgData: T[K], method: K, toTabID = null): Promise<CallbackItem<keyof T>> {
-    const data = this.genMessageProtocol(msgData, method, INJECTJS, toTabID)
-    return this.sendEvent(data)
-  }
-  sendEventToPopupJS<K extends keyof T>(msgData: T[K], method: K, toTabID = null): Promise<CallbackItem<keyof T>> {
-    const data = this.genMessageProtocol(msgData, method, POPUPJS, toTabID)
-    return this.sendEvent(data)
-  }
+  // sendEventToInjectJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number): Promise<Q[K]['resp']> {
+  //   const data = this.genMessageProtocol(msgData, method, INJECTJS, toTabID)
+  //   return this.sendEvent(data)
+  // }
+  // sendEventToPopupJS<K extends keyof Q>(method: K, msgData: Q[K]['req'], toTabID?: number): Promise<Q[K]['resp']> {
+  //   const data = this.genMessageProtocol(msgData, method, POPUPJS, toTabID)
+  //   return this.sendEvent(data)
+  // }
 }
 
-class InjectJsMessageSender<T> extends MessageSender<T> {
-  constructor() {
-    super()
-    this.type = INJECTJS
-    console.log('injectJs Message sender init ok')
-    window.addEventListener('message', this._onEventMessage.bind(this))
-  }
-  _onEventMessage(event: MessageEvent) {
-    this.onMessage(event.data)
-  }
-  _send<K extends keyof T>(msg: MessageProtocol<K, T>) {
-    window.postMessage(msg, '*')
-  }
-}
+// class InjectJsMessageSender<T> extends MessageSender<T> {
+//   constructor() {
+//     super()
+//     this.type = INJECTJS
+//     console.log('injectJs Message sender init ok')
+//     window.addEventListener('message', this._onEventMessage.bind(this))
+//   }
+//   _onEventMessage(event: MessageEvent) {
+//     this.onMessage(event.data)
+//   }
+//   _send<K extends keyof T>(msg: MessageProtocol<K, T>) {
+//     window.postMessage(msg, '*')
+//   }
+// }
 
-class ContentJsMessageSender<T> extends MessageSender<T> {
+class ContentJsMessageSender<T extends Record<keyof T, Imsg<any, any>>> extends MessageSender<T> {
   private toBackGroundPort: chrome.runtime.Port
   constructor(toBackGroundPort: chrome.runtime.Port, tabID: number) {
     super()
@@ -207,12 +227,12 @@ class ContentJsMessageSender<T> extends MessageSender<T> {
     window.addEventListener('message', this._onEventMessage.bind(this))
     toBackGroundPort.onMessage.addListener(this._onMessage.bind(this))
   }
-  static async creat<T>() {
+  static async creat<T extends Record<keyof T, Imsg<any, any>>>() {
     const tabID = await ContentJsMessageSender.getTabID()
     const toBackGroundPort = chrome.runtime.connect({
       name: `${CONTENTJS}-${tabID}`
     })
-    // toBackGroundPort.postMessage(WHATISMYTABID);
+    // toBackGroundPort.postMessage(WHATISMYTABID)
     return new ContentJsMessageSender<T>(toBackGroundPort, tabID)
   }
 
@@ -225,14 +245,14 @@ class ContentJsMessageSender<T> extends MessageSender<T> {
       })
     })
   }
-  _send<K extends keyof T>(msg: MessageProtocol<K, T>) {
+  protected _send<K extends keyof T>(msg: MessageProtocol<K, T[K]['req']>) {
     if (msg.to === INJECTJS) {
       window.postMessage(msg, '*')
       return
     }
     this.toBackGroundPort.postMessage(msg)
   }
-  _onMessage<K extends keyof T>(msg: MessageProtocol<K, T>) {
+  _onMessage<K extends keyof T>(msg: MessageProtocol<K, T[K]['req']>) {
     if (msg.token !== TOKEN) return
     // 给injectjs发出的消息添加发出tabID
     if (msg.from === INJECTJS) {
@@ -245,7 +265,7 @@ class ContentJsMessageSender<T> extends MessageSender<T> {
       this.redictMessage(msg)
     }
   }
-  redictMessage<K extends keyof T>(msg: MessageProtocol<K, T>) {
+  redictMessage<K extends keyof T>(msg: MessageProtocol<K, T[K]['req']>) {
     console.log('转发消息', msg)
     if (msg.to === INJECTJS) {
       // 这个是用来区分发送到injectsjs的标志，应为他俩都监听了message事件
@@ -255,26 +275,22 @@ class ContentJsMessageSender<T> extends MessageSender<T> {
   }
 
   _onEventMessage<K extends keyof T>(event: MessageEvent) {
-    const msg = event.data as MessageProtocol<K, T>
+    const msg = event.data as MessageProtocol<K, T[K]['req']>
     // injectJs才会处理
     if (msg.InjectRedict) return
     this._onMessage(msg)
   }
 }
 
-class BackgroundMessageSender<T> extends MessageSender<T> {
+class BackgroundMessageSender<T extends Record<keyof T, Imsg<any, any>>> extends MessageSender<T> {
   private devtoolsPorts: Map<number, chrome.runtime.Port>
   private contentJsPorts: Map<number, chrome.runtime.Port>
   private popupPort?: chrome.runtime.Port
   private onConnect: Function
   constructor() {
     super()
-
-    /**
-     * @type {Map<number,chrome.runtime.Port>} -可能会有多个devTools同时链接到background，使用tabID进行区分
-     */
-    this.devtoolsPorts = new Map()
-    this.contentJsPorts = new Map()
+    this.devtoolsPorts = new Map<number, chrome.runtime.Port>()
+    this.contentJsPorts = new Map<number, chrome.runtime.Port>()
     this.onConnect = (port: chrome.runtime.Port) => {
       if (port.name === WHATISMYTABID) {
         const tabID = port.sender!.tab!.id!
@@ -309,7 +325,7 @@ class BackgroundMessageSender<T> extends MessageSender<T> {
     console.log('删除:', port)
   }
 
-  _send<K extends keyof T>(msg: MessageProtocol<K, T>) {
+  _send<K extends keyof T>(msg: MessageProtocol<K, T[K]['req']>) {
     console.log('发送消息:', msg)
     let port: chrome.runtime.Port | undefined
     if (msg.to === POPUPJS) {
@@ -326,7 +342,7 @@ class BackgroundMessageSender<T> extends MessageSender<T> {
     port.postMessage(msg)
   }
 
-  _onMessage<K extends keyof T>(msg: MessageProtocol<K, T>) {
+  _onMessage<K extends keyof T>(msg: MessageProtocol<K, T[K]['req']>) {
     if (msg.token !== TOKEN) return
     if (msg.to !== BACKGROUNDJS) {
       this._send(msg)
@@ -335,58 +351,58 @@ class BackgroundMessageSender<T> extends MessageSender<T> {
   }
 }
 
-/**
- * devTools的消息处理机制
- */
-class DevtoolsMessageSender<T> extends MessageSender<T> {
-  private toBackGroundPort: chrome.runtime.Port
-  constructor(port: chrome.runtime.Port, tabID: number) {
-    super()
-    this.toBackGroundPort = port
-    this.tabID = tabID
-    this.type = DEVTOOLSJS
-    this.toBackGroundPort.onMessage.addListener(this._onMessage.bind(this))
-  }
+// /**
+//  * devTools的消息处理机制
+//  */
+// class DevtoolsMessageSender<T> extends MessageSender<T> {
+//   private toBackGroundPort: chrome.runtime.Port
+//   constructor(port: chrome.runtime.Port, tabID: number) {
+//     super()
+//     this.toBackGroundPort = port
+//     this.tabID = tabID
+//     this.type = DEVTOOLSJS
+//     this.toBackGroundPort.onMessage.addListener(this._onMessage.bind(this))
+//   }
 
-  static async creat<T>() {
-    const tabID = await getCurrentTabId()
-    const toBackGroundPort = chrome.runtime.connect({
-      name: `${DEVTOOLSJS}-${tabID}`
-    })
-    return new DevtoolsMessageSender<T>(toBackGroundPort, tabID!)
-  }
+//   static async creat<T>() {
+//     const tabID = await getCurrentTabId()
+//     const toBackGroundPort = chrome.runtime.connect({
+//       name: `${DEVTOOLSJS}-${tabID}`
+//     })
+//     return new DevtoolsMessageSender<T>(toBackGroundPort, tabID!)
+//   }
 
-  _send<K extends keyof T>(msg: MessageProtocol<K, T>) {
-    this.toBackGroundPort.postMessage(msg)
-  }
+//   _send<K extends keyof T>(msg: MessageProtocol<K, T>) {
+//     this.toBackGroundPort.postMessage(msg)
+//   }
 
-  _onMessage<K extends keyof T>(msg: MessageProtocol<K, T>) {
-    this.onMessage(msg)
-  }
-}
+//   _onMessage<K extends keyof T>(msg: MessageProtocol<K, T>) {
+//     this.onMessage(msg)
+//   }
+// }
 
-class PopupMessageSender<T> extends MessageSender<T> {
-  private toBackGroundPort: chrome.runtime.Port
-  constructor(port: chrome.runtime.Port, tabID: number) {
-    super()
-    this.toBackGroundPort = port
-    this.tabID = tabID
-    this.type = POPUPJS
-    this.toBackGroundPort.onMessage.addListener(this._onMessage.bind(this))
-  }
+// class PopupMessageSender<T> extends MessageSender<T> {
+//   private toBackGroundPort: chrome.runtime.Port
+//   constructor(port: chrome.runtime.Port, tabID: number) {
+//     super()
+//     this.toBackGroundPort = port
+//     this.tabID = tabID
+//     this.type = POPUPJS
+//     this.toBackGroundPort.onMessage.addListener(this._onMessage.bind(this))
+//   }
 
-  static async creat<T>() {
-    const tabID = await getCurrentTabId()
-    const toBackGroundPort = chrome.runtime.connect({
-      name: `${POPUPJS}-${tabID}`
-    })
-    return new DevtoolsMessageSender<T>(toBackGroundPort, tabID!)
-  }
-  _send<K extends keyof T>(msg: MessageProtocol<K, T>) {
-    this.toBackGroundPort.postMessage(msg)
-  }
+//   static async creat<T>() {
+//     const tabID = await getCurrentTabId()
+//     const toBackGroundPort = chrome.runtime.connect({
+//       name: `${POPUPJS}-${tabID}`
+//     })
+//     return new DevtoolsMessageSender<T>(toBackGroundPort, tabID!)
+//   }
+//   _send<K extends keyof T>(msg: MessageProtocol<K, T>) {
+//     this.toBackGroundPort.postMessage(msg)
+//   }
 
-  _onMessage<K extends keyof T>(msg: MessageProtocol<K, T>) {
-    this.onMessage(msg)
-  }
-}
+//   _onMessage<K extends keyof T>(msg: MessageProtocol<K, T>) {
+//     this.onMessage(msg)
+//   }
+// }

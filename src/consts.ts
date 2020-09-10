@@ -1,4 +1,6 @@
 // 这儿定义各种公用类型
-export interface CommonMsg {
-  ping: 'pong'
+import { Imsg } from '@/lib/messages'
+
+export interface IM {
+  ppp: Imsg<{ x: string }, number>
 }

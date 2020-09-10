@@ -1,10 +1,11 @@
 import { colorInfoLog } from '../lib/utils'
 import { getMsgSender } from '../lib/messages'
-import { CommonMsg } from '@/consts'
+import { IM } from '@/consts'
 ;(async () => {
   colorInfoLog('background', 'info', 'init.....')
-  const sender = await getMsgSender<CommonMsg>('backgroundJs')
-  sender.on('ping', (x) => {
+  const sender = await getMsgSender<IM>('backgroundJs')
+  sender.on('ppp', (x, echo) => {
     colorInfoLog('background', 'msg', x)
+    echo(1)
   })
 })()
