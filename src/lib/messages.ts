@@ -130,12 +130,10 @@ export class MessageSender<Q extends Record<keyof Q, Imsg<any, any>>> extends Ev
     const error = msg.error
     const callback = this.callBacks.get(id)
     if (callback) {
-      console.log('callback')
       this.callBacks.delete(id)
       if (error) {
         callback.reject(new Error(`Protocol error (${callback.method}): ${error.message} ${error.data}`))
       } else {
-        console.log('resolve')
         callback.resolve(msg.data)
       }
     }
@@ -273,7 +271,6 @@ class ContentJsMessageSender<T extends Record<keyof T, Imsg<any, any>>> extends 
     }
   }
   redictMessage<K extends keyof T>(msg: MessageProtocol<K, T[K]['req']>) {
-    console.log('转发消息', msg)
     if (msg.to === INJECTJS) {
       // 这个是用来区分发送到injectsjs的标志，应为他俩都监听了message事件
       msg.InjectRedict = true
@@ -292,12 +289,13 @@ class ContentJsMessageSender<T extends Record<keyof T, Imsg<any, any>>> extends 
 class BackgroundMessageSender<T extends Record<keyof T, Imsg<any, any>>> extends MessageSender<T> {
   private devtoolsPorts: Map<number, chrome.runtime.Port>
   private contentJsPorts: Map<number, chrome.runtime.Port>
-  private popupPort?: chrome.runtime.Port
+  private popupPorts: Map<number, chrome.runtime.Port>
   private onConnect: Function
   constructor() {
     super()
     this.devtoolsPorts = new Map<number, chrome.runtime.Port>()
     this.contentJsPorts = new Map<number, chrome.runtime.Port>()
+    this.popupPorts = new Map<number, chrome.runtime.Port>()
     this.onConnect = (port: chrome.runtime.Port) => {
       if (port.name === WHATISMYTABID) {
         const tabID = port.sender!.tab!.id!
@@ -307,12 +305,8 @@ class BackgroundMessageSender<T extends Record<keyof T, Imsg<any, any>>> extends
       const info = port.name.split('-')
       const ID = parseInt(info[1])
       const _type = info[0]
-      if (_type === POPUPJS) {
-        this.popupPort = port
-      } else {
-        const _map = _type === DEVTOOLSJS ? this.devtoolsPorts : this.contentJsPorts
-        _map.set(ID, port)
-      }
+      const _map = _type === DEVTOOLSJS ? this.devtoolsPorts : _type === POPUPJS ? this.popupPorts : this.contentJsPorts
+      _map.set(ID, port)
       port.onMessage.addListener(this._onMessage.bind(this))
       port.onDisconnect.addListener(this.onProtDisconnect.bind(this))
     }
@@ -323,25 +317,13 @@ class BackgroundMessageSender<T extends Record<keyof T, Imsg<any, any>>> extends
     const info = port.name.split('-')
     const ID = parseInt(info[1])
     const _type = info[0]
-    if (_type === POPUPJS) {
-      this.popupPort = undefined
-    } else {
-      const _map = _type === DEVTOOLSJS ? this.devtoolsPorts : this.contentJsPorts
-      _map.delete(ID)
-    }
-    console.log('删除:', port)
+    const _map = _type === DEVTOOLSJS ? this.devtoolsPorts : _type === POPUPJS ? this.popupPorts : this.contentJsPorts
+    _map.delete(ID)
   }
 
   _send<K extends keyof T>(msg: MessageProtocol<K, T[K]['req']>) {
-    console.log('发送消息:', msg)
-    let port: chrome.runtime.Port | undefined
-    if (msg.to === POPUPJS) {
-      port = this.popupPort
-    } else {
-      const _map = msg.to === DEVTOOLSJS ? this.devtoolsPorts : this.contentJsPorts
-      port = _map.get(msg.toTabID || -1)
-    }
-
+    const _map = msg.to === DEVTOOLSJS ? this.devtoolsPorts : msg.to === POPUPJS ? this.popupPorts : this.contentJsPorts
+    const port = _map.get(msg.toTabID || -1)
     if (!port) {
       console.log('没有获取到对应的port')
       return
@@ -403,7 +385,7 @@ class PopupMessageSender<T extends Record<keyof T, Imsg<any, any>>> extends Mess
     const toBackGroundPort = chrome.runtime.connect({
       name: `${POPUPJS}-${tabID}`
     })
-    return new DevtoolsMessageSender<T>(toBackGroundPort, tabID!)
+    return new PopupMessageSender<T>(toBackGroundPort, tabID!)
   }
   _send<K extends keyof T>(msg: MessageProtocol<K, T[K]['req']>) {
     this.toBackGroundPort.postMessage(msg)

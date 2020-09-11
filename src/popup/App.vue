@@ -6,7 +6,7 @@
 
 <style>
 #app {
-  width: 300px;
-  height: 400px;
+  width: 400px;
+  height: 200px;
 }
 </style>

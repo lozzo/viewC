@@ -6,10 +6,10 @@ const toInt = (x: any) => {
   return parseInt(x)
 }
 export enum ProxyType {
-  'noneProxy',
-  'system',
-  'auto',
-  'manual'
+  'noneProxy' = 'noneProxy',
+  'system' = 'system',
+  'auto' = 'auto',
+  'manual' = 'manual'
 }
 interface IPorxy {
   type: ProxyType
@@ -17,13 +17,31 @@ interface IPorxy {
 }
 
 interface IParsedProxy {
+  scheme: 'http' | 'https' | 'socks5' | 'socks4'
   host: string
   port: number
-  auth?: string
+  auth?: {
+    user: string
+    password: string
+  }
 }
 
+export interface ProxyInfo extends Partial<IParsedProxy> {
+  proxyType: ProxyType
+}
+
+interface proxySetResp {
+  ok: boolean
+  msg?: string
+}
+
+interface onlineProxyResp {
+  proxy: string
+  error?: string
+}
 export interface ProxyMsg {
-  proxySet: Imsg<IPorxy, boolean>
+  proxySet: Imsg<IPorxy, proxySetResp>
+  proxyGet: Imsg<any, ProxyInfo>
 }
 
 // 设置代理的地方
@@ -36,57 +54,123 @@ export class ChromeProxyCtl extends EventEmitter {
       const ok = await this.setProxy(data.data)
       echo(ok)
     })
-  }
-  async setProxy(proxyOptions: IPorxy) {
-    // 如果是系统代理或者直连
-    if (proxyOptions.type === ProxyType.noneProxy || proxyOptions.type === ProxyType.system) {
-      chrome.proxy.settings.set({
-        value: {
-          mode: proxyOptions.type === ProxyType.noneProxy ? 'direct' : 'system'
-        }
-      })
-      return true
-    }
 
-    //
-    const proxy = this.verifyProxy(
-      proxyOptions.type === ProxyType.auto ? await this.getProxyOnline() : proxyOptions.proxy!
-    )
-    const parsedProxy = this.parseProxy(proxy)
-    console.info('dlog-chromePorxy:56', parsedProxy)
-    const config = {
-      value: {
-        mode: 'fixed_servers',
-        rules: {
-          proxyForHttp: {
-            scheme: 'http',
-            host: parsedProxy.host,
-            port: parsedProxy.port
-          },
-          proxyForHttps: {
-            scheme: 'http',
-            host: parsedProxy.host,
-            port: parsedProxy.port
+    this.sender.on('proxyGet', async (data, echo) => {
+      const info = await this.getProxyInfo()
+      echo(info)
+    })
+  }
+
+  async setProxy(proxyOptions: IPorxy): Promise<proxySetResp> {
+    return new Promise(async (resv, rej) => {
+      // 如果是系统代理或者直连
+      let config
+      let parsedProxy: IParsedProxy | undefined = undefined
+      if (proxyOptions.type === ProxyType.noneProxy || proxyOptions.type === ProxyType.system) {
+        config = {
+          value: {
+            mode: proxyOptions.type === ProxyType.noneProxy ? 'direct' : 'system'
+          }
+        }
+      } else {
+        let proxy = ''
+        if (proxyOptions.type === ProxyType.auto) {
+          const p = await this.getProxyOnline()
+          if (p.error !== undefined) {
+            resv({ ok: false, msg: p.error })
+            return
+          }
+          proxy = p.proxy
+        } else {
+          proxy = proxyOptions.proxy!
+        }
+
+        proxy = this.verifyProxy(proxy)
+        if (proxy === '') return resv({ ok: false, msg: 'proxy format error' })
+        parsedProxy = this.parseProxy(proxy)
+        config = {
+          value: {
+            mode: 'fixed_servers',
+            rules: {
+              bypassList: [
+                '127.0.0.1',
+                '::1',
+                'localhost',
+                '10.28.0.1/16',
+                '192.168.0.1/16',
+                '10.200.0.1/16',
+                '*.bbdops.com',
+                '*.gyops.com',
+                '*.bbdops.net',
+                '*.bbdservice.com'
+              ],
+              proxyForHttp: {
+                scheme: parsedProxy.scheme,
+                host: parsedProxy.host,
+                port: parsedProxy.port
+              },
+              proxyForHttps: {
+                scheme: parsedProxy.scheme,
+                host: parsedProxy.host,
+                port: parsedProxy.port
+              }
+            }
           }
         }
       }
-    }
-    chrome.proxy.settings.set(config)
-    return true
-  }
 
+      chrome.proxy.settings.set(config, async () => {
+        await this.setProxyInfo({
+          proxyType: proxyOptions.type,
+          scheme: parsedProxy?.scheme,
+          port: parsedProxy?.port,
+          host: parsedProxy?.host,
+          auth: parsedProxy?.auth
+        })
+        resv({ ok: true })
+      })
+    })
+  }
+  //HTTP {http|https}://[user[:pass]@][host[:port]]
+  //SOCKS {socks4|socks5}://[user[:pass]@][host[:port]]
   parseProxy(proxyStr: string): IParsedProxy {
-    let aFlag = false
-    if (proxyStr.indexOf('@') === -1) {
-      aFlag = true
-      proxyStr = 'xxx:xxx@' + proxyStr
+    let scheme: 'http' | 'https' | 'socks5' | 'socks4' = 'http'
+    if (proxyStr.indexOf('://') === -1) {
+      console.info('no proxy scheme, set http by default')
+      proxyStr = 'http://' + proxyStr
     }
-    const [auth, server] = proxyStr.split('@')
-    const [host, port] = server.split(':')
+
+    if (proxyStr.startsWith('http://')) {
+      scheme = 'http'
+    }
+    if (proxyStr.startsWith('https://')) {
+      scheme = 'https'
+    }
+    if (proxyStr.startsWith('socks5://')) {
+      scheme = 'socks5'
+    }
+    if (proxyStr.startsWith('socks4://')) {
+      scheme = 'socks4'
+    }
+
+    const regex = /^.*:\/\//gm
+    const subst = `http://`
+    const result = proxyStr.replace(regex, subst)
+
+    const url = new URL(result)
+    const port = url.port !== '' ? toInt(url.port) : scheme === 'http' ? 80 : scheme === 'https' ? 443 : 1080
+    console.info('dlog-chromePorxy:162', url)
     return {
-      host: host,
-      port: toInt(port),
-      auth: aFlag ? undefined : `Basic ${btoa(auth)}`
+      host: url.hostname,
+      port: port,
+      scheme: scheme,
+      auth:
+        url.username === ''
+          ? undefined
+          : {
+              user: url.username,
+              password: url.password
+            }
     }
   }
 
@@ -94,32 +178,54 @@ export class ChromeProxyCtl extends EventEmitter {
    * 获取在线代理
    * @param proxyUrl 代理获取的地址，这个函数后期可配置
    */
-  async getProxyOnline(proxyUrl = 'http://10.200.100.43:48083/getProxy') {
-    const resp = await axios.post(proxyUrl, {
-      args: {
-        num: 1,
-        type: '[1]',
-        bbd_type: 'test',
-        bbd_table: 'chrome_ex'
-      },
-      proxy: []
-    })
-    const _p = resp.data.data[0].proxy
-    return _p
+  async getProxyOnline(proxyUrl = 'http://10.200.100.43:48083/getProxy'): Promise<onlineProxyResp> {
+    try {
+      const resp = await axios.post(
+        proxyUrl,
+        {
+          args: {
+            num: 1,
+            type: '[1]',
+            bbd_type: 'test',
+            bbd_table: 'chrome_ex'
+          },
+          proxy: []
+        },
+        { timeout: 3 * 1000 }
+      )
+      const _p = resp.data.data[0].proxy
+      return { proxy: _p }
+    } catch (e) {
+      return {
+        proxy: '',
+        error: e.msg
+      }
+    }
   }
 
-  // async getProxyOnline(proxyUrl = 'http://proxy.bbdops.net:48083/getProxy') {
-  //   const resp = await fetch(proxyUrl, { method: 'GET' })
-  //   console.info('dlog-chromePorxy:112', resp)
-  //   return '127.0.0.1:1087'
-  // }
-
-  verifyProxy(proxy: string) {
-    if (proxy.startsWith('http://')) {
-      proxy = proxy.substr(7)
+  verifyProxy(proxyStr: string) {
+    const proxyRegx = /((https?|socks[45]{1}):\/\/){0,1}([a-zA-Z0-9]+:[a-zA-Z0-9]+@){0,1}((\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})|([a-zA-Z0-9._-]+)){1}(:\d{1,5}){0,1}/g
+    const matchStr = proxyStr.match(proxyRegx)
+    if (matchStr) {
+      if (proxyStr === matchStr[0]) return proxyStr
     }
-    const proxyRegx = /\w+:\w+@\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}:\d{1,6}/
-    return proxyRegx.test(proxy) ? proxy : ''
+    return ''
+  }
+
+  async setProxyInfo(info: ProxyInfo) {
+    return new Promise((resv) => {
+      chrome.storage.local.set({ proxy: info }, () => {
+        resv()
+      })
+    })
+  }
+
+  async getProxyInfo(): Promise<ProxyInfo> {
+    return new Promise((resv) => {
+      chrome.storage.local.get((item) => {
+        resv(item['proxy'])
+      })
+    })
   }
 }
 
@@ -132,5 +238,10 @@ export class ChromeProxySet extends EventEmitter {
   }
   async setPorxy(proxy: IPorxy) {
     const ok = this.sender.sendMsgToBackgroundJS('proxySet', proxy)
+    return ok
+  }
+
+  async getProxyInfo() {
+    return await this.sender.sendMsgToBackgroundJS('proxyGet', '')
   }
 }
