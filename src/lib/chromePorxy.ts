@@ -56,7 +56,8 @@ export class ChromeProxyCtl extends EventEmitter {
     })
 
     this.sender.on('proxyGet', async (data, echo) => {
-      const info = await this.getProxyInfo()
+      let info = await this.getProxyInfo()
+      info = info !== undefined ? info : { proxyType: ProxyType.noneProxy }
       echo(info)
     })
   }
@@ -191,7 +192,7 @@ export class ChromeProxyCtl extends EventEmitter {
           },
           proxy: []
         },
-        { timeout: 3 * 1000 }
+        { timeout: 10 * 1000 }
       )
       const _p = resp.data.data[0].proxy
       return { proxy: _p }
@@ -220,7 +221,7 @@ export class ChromeProxyCtl extends EventEmitter {
     })
   }
 
-  async getProxyInfo(): Promise<ProxyInfo> {
+  async getProxyInfo(): Promise<ProxyInfo | undefined> {
     return new Promise((resv) => {
       chrome.storage.local.get((item) => {
         resv(item['proxy'])

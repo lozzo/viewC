@@ -12,8 +12,8 @@ import { ProxyMsg, ChromeProxyCtl } from '@/lib/chromePorxy'
         console.info('dlog-background:12', proxyInfo)
         callback({
           authCredentials: {
-            username: proxyInfo.auth?.user!,
-            password: proxyInfo.auth?.password!
+            username: proxyInfo!.auth?.user!,
+            password: proxyInfo!.auth?.password!
           }
         })
       }
