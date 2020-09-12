@@ -47,6 +47,7 @@ export interface ProxyMsg {
 // 设置代理的地方
 export class ChromeProxyCtl extends EventEmitter {
   private sender: MessageSender<ProxyMsg>
+  private proxyInfo?: ProxyInfo
   constructor(sender: MessageSender<ProxyMsg>) {
     super()
     this.sender = sender
@@ -60,6 +61,22 @@ export class ChromeProxyCtl extends EventEmitter {
       info = info !== undefined ? info : { proxyType: ProxyType.noneProxy }
       echo(info)
     })
+
+    chrome.webRequest.onAuthRequired.addListener(
+      async (details, callback) => {
+        if (callback && details.isProxy) {
+          const proxyInfo = await this.getProxyInfo()
+          callback({
+            authCredentials: {
+              username: proxyInfo!.auth?.user!,
+              password: proxyInfo!.auth?.password!
+            }
+          })
+        }
+      },
+      { urls: ['<all_urls>'] },
+      ['asyncBlocking']
+    )
   }
 
   async setProxy(proxyOptions: IPorxy): Promise<proxySetResp> {
@@ -215,6 +232,7 @@ export class ChromeProxyCtl extends EventEmitter {
 
   async setProxyInfo(info: ProxyInfo) {
     return new Promise((resv) => {
+      this.proxyInfo = info
       chrome.storage.local.set({ proxy: info }, () => {
         resv()
       })
@@ -223,8 +241,13 @@ export class ChromeProxyCtl extends EventEmitter {
 
   async getProxyInfo(): Promise<ProxyInfo | undefined> {
     return new Promise((resv) => {
+      if (this.proxyInfo !== undefined) {
+        resv(this.proxyInfo)
+      }
       chrome.storage.local.get((item) => {
-        resv(item['proxy'])
+        const info = item['proxy']
+        this.proxyInfo = info
+        resv(info)
       })
     })
   }
