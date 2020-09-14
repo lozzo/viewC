@@ -177,7 +177,6 @@ export class ChromeProxyCtl extends EventEmitter {
 
     const url = new URL(result)
     const port = url.port !== '' ? toInt(url.port) : scheme === 'http' ? 80 : scheme === 'https' ? 443 : 1080
-    console.info('dlog-chromePorxy:162', url)
     return {
       host: url.hostname,
       port: port,

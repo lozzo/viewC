@@ -5,5 +5,4 @@ import { ProxyMsg, ChromeProxyCtl } from '@/lib/chromePorxy'
   colorInfoLog('background', 'info', 'init.....')
   const sender = await getMsgSender<ProxyMsg>('backgroundJs')
   const proxyCtl = new ChromeProxyCtl(sender)
-  
 })()
